@@ -18,9 +18,10 @@ void setup()
 {
     Serial.begin(115200);
     rm.init();
-    rm.new_run();
+    rm.start_new_run();
 }
 
 void loop()
 {
+    // rm.loop();
 }
