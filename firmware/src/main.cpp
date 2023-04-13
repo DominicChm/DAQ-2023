@@ -1,12 +1,24 @@
 #include <Arduino.h>
 #include <RunManager.h>
-#include <formats.h>
+#include <DataSource.h>
+#include <communication/communication.h>
+#include <type_name.h>
 
-RunManager rm;
+T_DATA daq_data;
+
+typedef DataSource ds;
+DataSource data_sources[] = {
+    ds(500, daq_data.sus, "Suspension Pots"),
+    ds(100, daq_data.electrons, "Electrons"),
+};
+
+RunManager rm(100, data_sources);
 
 void setup()
 {
-    fmt_accelerometer acc;
+    Serial.begin(115200);
+    rm.init();
+    rm.new_run();
 }
 
 void loop()

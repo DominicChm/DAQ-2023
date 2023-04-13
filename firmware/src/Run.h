@@ -1,27 +1,23 @@
 #include <run_format.h>
+#include <DataSource.h>
 #include <FS.h>
 
 #define MAX_ID 10
 
+template<size_t NUM_SOURCES>
 class Run
 {
-    void *format_data[MAX_ID];
+    run_header_t<NUM_SOURCES> header;
 
-    Run(File f)
+    Run(File f, DataSource sources[NUM_SOURCES])
     {
+
     }
 
     ~Run()
     {
     }
-
-    template <class fmt>
-    void add_fmt(uint32_t interval)
-    {
-        uint8_t* f = new fmt();
-        // static_assert(f->id < MAX_ID, "ID Error!");
-    }
-
+    
     void write_header()
     {
     }
