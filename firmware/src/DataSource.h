@@ -36,15 +36,15 @@ public:
 
     void reset_base_interval(uint32_t base_interval)
     {
-        cycle_interval = (base_interval + interval_ms + 1) / base_interval;
+        cycle_interval = (base_interval + interval_ms - 1) / base_interval;
+        Serial.printf("Datasource %s will store every %d cycles, with type-id %X\n", name, cycle_interval, type_id);
         cycles = 0;
     }
 
     size_t cycle(uint8_t *buf)
     {
-        if (--cycles < 0)
+        if (--cycles > 0)
             return 0;
-
         cycles = cycle_interval;
 
         memcpy(buf, data_source, data_size);

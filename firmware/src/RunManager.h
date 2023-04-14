@@ -5,26 +5,36 @@
 #include <Arduino.h>
 
 #define INDEX_FILE_PATH "/__INDEX"
+#define BLOCK_SIZE 64
+#define NUM_BLOCKS 3
+#define BLOCK_OVERHEAD BLOCK_SIZE
+
+#define DONT_WRITE_HEADER
 
 template <size_t NUM_SOURCES>
 class RunManager
 {
-    const DataSource (&data_sources)[NUM_SOURCES];
+    DataSource (&data_sources)[NUM_SOURCES];
     const uint32_t base_cycle_interval_ms;
 
     bool run_is_active;
     File active_run_file;
+
     TaskHandle_t sampler_task;
     TaskHandle_t writer_task;
 
-    SemaphoreHandle_t sd_mutex;
-    SemaphoreHandle_t sample_mutex;
-
-    CircularBuffer<uint8_t, 1024 * 8> sample_buf;
+    struct block_t
+    {
+        SemaphoreHandle_t mutex;
+        size_t data_size;
+        uint8_t data[BLOCK_SIZE + BLOCK_OVERHEAD];
+    } blocks[NUM_BLOCKS];
 
 public:
-    RunManager(uint32_t base_cycle_interval_ms, const DataSource (&data_sources)[NUM_SOURCES]) : data_sources(data_sources),
-                                                                                                 base_cycle_interval_ms(base_cycle_interval_ms) {}
+    RunManager(uint32_t base_cycle_interval_ms, DataSource (&data_sources)[NUM_SOURCES]) : data_sources(data_sources),
+                                                                                           base_cycle_interval_ms(base_cycle_interval_ms)
+    {
+    }
     bool init()
     {
         if (!SD_MMC.begin())
@@ -38,6 +48,7 @@ public:
 
     void start_new_run()
     {
+        init();
         finish_current_run();
 
         String file_name = get_random_file_name();
@@ -45,8 +56,13 @@ public:
 
         // Create run file
         active_run_file = SD_MMC.open(file_name, FILE_WRITE);
-        run_is_active = true;
+        if (!active_run_file)
+        {
+            Serial.println("RUN FILE CREATION PROBLEM!!");
+            return;
+        }
 
+        // Set up the header
         run_header_t<NUM_SOURCES> head = {0};
         head.base_cycle_interval_ms = base_cycle_interval_ms;
         head.start_time_epoch = 0;
@@ -55,19 +71,33 @@ public:
             .latitude = .5,
         };
         head.num_sources = NUM_SOURCES;
+
+        // Update the index with the new header.
         index_add_new(file_name, head);
 
-        sample_buf.clear();
-        xTaskCreate(sampler, "Sampler", 4096, this, 10, &sampler_task);
-        xTaskCreate(writer, "Sampler", 4096, this, 10, &sampler_task);
+        // Set up data sources by setting the cycle time base.
+        for (int i = 0; i < NUM_SOURCES; i++)
+            data_sources[i].reset_base_interval(base_cycle_interval_ms);
 
-        // Instantiate a run on that file
+        // init blocks
+        for (size_t i = 0; i < NUM_BLOCKS; i++)
+        {
+            blocks[i].mutex = xSemaphoreCreateMutex();
+            blocks[i].data_size = 0;
+        }
+        run_is_active = true;
+
+        Serial.println("Creating tasks...");
+        xTaskCreate(sampler, "Sampler", 4096, this, 15, &sampler_task);
+        xTaskCreate(writer, "Writer", 4096, this, 10, &writer_task);
     }
 
     void finish_current_run()
     {
         if (run_is_active)
         {
+            // Note: Find some way to write dredges of data. In worst case
+            // currently there will be 512 bytes of data loss
             vTaskDelete(sampler_task);
             vTaskDelete(writer_task);
 
@@ -108,26 +138,33 @@ public:
 
     static void sampler(void *arg)
     {
+
         RunManager *self = (RunManager *)arg;
         TickType_t xLastWakeTime = xTaskGetTickCount();
-        uint8_t block[1024];
+
+        size_t block_idx = 0;
         while (1)
         {
-            xSemaphoreTake(self->sample_mutex, 1000);
-            // Sample all sensors into a local buffer, then
-            // write to the circular buffer.
-            for (DataSource d : data_sources)
+            block_t *current_block = &(self->blocks)[block_idx++];
+            block_idx = block_idx % NUM_BLOCKS;
+
+            if (current_block->data_size != 0)
             {
-                int len = d.cycle(&block);
-                for (int i = 0; i < len; i++)
-                    sample_buf.push(block[i]);
+                Serial.println("FATAL ERROR: BLOCK OVERRUN (The sampler's next block's size was not equal to zero!)");
+                vTaskDelay(portMAX_DELAY); // Effectively stall the task.
             }
 
-            // Push said local buffer into the circular buffer
-            for (size_t i = 0; i < idx; i++)
-
-                xSemaphoreGive(self->sample_mutex);
-            vTaskDelayUntil(&xLastWakeTime, self->base_cycle_interval_ms);
+            xSemaphoreTake(current_block->mutex, portMAX_DELAY);
+            while (current_block->data_size < BLOCK_SIZE)
+            {
+                for (int i = 0; i < NUM_SOURCES; i++)
+                {
+                    current_block->data_size += self->data_sources[i].cycle(&(current_block->data)[current_block->data_size]);
+                }
+                vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(self->base_cycle_interval_ms));
+                Serial.println(current_block->data_size);
+            }
+            xSemaphoreGive(current_block->mutex);
         }
     }
 
@@ -136,27 +173,18 @@ public:
         RunManager *self = (RunManager *)arg;
         TickType_t xLastWakeTime = xTaskGetTickCount();
 
-        uint8_t block[512];
+        size_t block_idx = 0;
         while (1)
         {
-            vTaskDelayUntil(&xLastWakeTime, 10);
+            block_t *current_block = &(self->blocks)[block_idx++];
+            block_idx = block_idx % NUM_BLOCKS;
 
-            xSemaphoreTake(self->sample_mutex, 1000);
-            if (self->sample_buf.size() < sizeof(block))
-            {
-                xSemaphoreGive(self->sample_mutex);
-                continue;
-            }
-            // Read 512 bytes from the circular buffer into a local block of memory to cache for the SD write.
-            for (int i = 0; i < sizeof(block); i++)
-                block[i] = self->sample_buf.shift();
+            xSemaphoreTake(current_block->mutex, portMAX_DELAY);
+            self->active_run_file.write(current_block->data, current_block->data_size);
+            current_block->data_size = 0;
+            xSemaphoreGive(current_block->mutex);
 
-            xSemaphoreGive(self->sample_mutex);
-
-            // SD WRITE
-            xSemaphoreTake(self->sd_mutex, 1000);
-            self->active_run_file.write(&block, sizeof(block));
-            xSemaphoreGive(self->sd_mutex);
+            Serial.println("Wrote block!");
         }
     }
     void index_delete()
