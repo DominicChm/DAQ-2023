@@ -5,15 +5,15 @@
 
 class DataSource
 {
-    void *data_source;
-    size_t data_size;
+    void *_data_source;
+    size_t _data_size;
 
-    const char *name;
-    uint32_t type_id;
-    uint32_t interval_ms;
+    const char *_name;
+    const char *_type_name;
+    uint32_t _interval_ms;
 
-    uint32_t cycle_interval;
-    int32_t cycles;
+    uint32_t _cycle_interval;
+    int32_t _cycles;
 
 public:
     /**
@@ -27,28 +27,43 @@ public:
     {
         static_assert(NAME_LEN < 32, "Name is too long! Max length is 31 chars");
 
-        this->data_source = &dat;
-        this->data_size = sizeof(T);
-        this->interval_ms = interval_ms;
-        this->name = (const char *)&name;
-        this->type_id = id<T>();
+        this->_data_source = &dat;
+        this->_data_size = sizeof(T);
+        this->_interval_ms = interval_ms;
+        this->_name = (const char *)&name;
+        this->_type_name = characteristic_type_name<T>();
     }
 
     void reset_base_interval(uint32_t base_interval)
     {
-        cycle_interval = (base_interval + interval_ms - 1) / base_interval;
-        Serial.printf("Datasource %s will store every %d cycles, with type-id %X\n", name, cycle_interval, type_id);
-        cycles = 0;
+        _cycle_interval = (base_interval + _interval_ms - 1) / base_interval;
+        Serial.printf("Datasource %s will store every %d cycles, with type-id %s\n", _name, _cycle_interval, _type_name);
+        _cycles = 0;
     }
 
     size_t cycle(uint8_t *buf)
     {
-        if (--cycles > 0)
+        if (--_cycles > 0)
             return 0;
-        cycles = cycle_interval;
+        _cycles = _cycle_interval;
 
-        memcpy(buf, data_source, data_size);
+        memcpy(buf, _data_source, _data_size);
 
-        return data_size;
+        return _data_size;
+    }
+
+    constexpr const char *get_type_name()
+    {
+        return _type_name;
+    }
+
+    run_data_source_t header_entry()
+    {
+        run_data_source_t e = {0};
+        e.cycle_interval = _cycle_interval;
+        strlcpy(e.name, _name, sizeof(e.name));
+        strlcpy(e.type_name, _type_name, sizeof(e.type_name));
+
+        return e;
     }
 };

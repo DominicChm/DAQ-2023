@@ -29,7 +29,7 @@ void setup()
     daq_data.electrons.voltage_sense36 = 0x01;
     daq_data.sus.bl_pot = 0x02;
     Serial.begin(115200);
-    rm.init();
+    rm.init_run();
     Serial.print("$ ");
 }
 

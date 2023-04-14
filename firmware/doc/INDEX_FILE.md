@@ -36,3 +36,6 @@ The main benefit of this approach is that file metadata mutation (IE changing a 
 This index, when parsed by javascript, will resolve to `file1_name_1.bin`'s name being `"Another random run"` and  `file_name_2.bin` being null - or deleted. This allows the index to be mutated without modifying or even loading the entire file! The latest entry simply needs to be appended. This should keep things fast, yet simple.
 
 This index can also be "collapsed" (where duplicate entries are removed) periodically to keep the filesize down. This should be relatively simple to do assuming filenames are kept to a constant length. 
+
+## Ideas
+- Collapsing could be easily done by letting the browser do all the hard parsing and deduplication work. **IDEA:** A POST endpoint that sets the current index.

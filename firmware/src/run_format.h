@@ -4,8 +4,8 @@
 struct run_data_source_t
 {
     uint32_t cycle_interval; // ms between each record of this format
-    uint8_t type_id;   // NOTE: Must be >0. ID 0 is reserved for NO TYPE. ID specifies datatype of struct.
     char name[32];
+    char type_name[64];
 
 } __attribute__((packed));
 

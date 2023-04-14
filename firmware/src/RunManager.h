@@ -35,7 +35,8 @@ public:
                                                                                            base_cycle_interval_ms(base_cycle_interval_ms)
     {
     }
-    bool init()
+
+    bool init_run()
     {
         if (!SD_MMC.begin())
         {
@@ -43,13 +44,17 @@ public:
         }
 
         Serial.printf("SD Initialized! Size: %lumb\n", SD_MMC.cardSize() / (1llu << 20));
+
+        // Set up data sources by setting the cycle time base.
+        for (int i = 0; i < NUM_SOURCES; i++)
+            data_sources[i].reset_base_interval(base_cycle_interval_ms);
+
         return true;
     }
-
     void start_new_run()
     {
-        init();
         finish_current_run();
+        init_run();
 
         String file_name = get_random_file_name();
         Serial.printf("Beginning new run in %s\n", file_name.c_str());
@@ -62,29 +67,11 @@ public:
             return;
         }
 
-        // Set up the header
-        run_header_t<NUM_SOURCES> head = {0};
-        head.base_cycle_interval_ms = base_cycle_interval_ms;
-        head.start_time_epoch = 0;
-        head.location = run_location_t{
-            .longitude = .6,
-            .latitude = .5,
-        };
-        head.num_sources = NUM_SOURCES;
+        run_header_t header = generate_header();
 
         // Update the index with the new header.
-        index_add_new(file_name, head);
+        index_add_new(file_name, header);
 
-        // Set up data sources by setting the cycle time base.
-        for (int i = 0; i < NUM_SOURCES; i++)
-            data_sources[i].reset_base_interval(base_cycle_interval_ms);
-
-        // init blocks
-        for (size_t i = 0; i < NUM_BLOCKS; i++)
-        {
-            blocks[i].mutex = xSemaphoreCreateMutex();
-            blocks[i].data_size = 0;
-        }
         run_is_active = true;
 
         Serial.println("Creating tasks...");
@@ -92,16 +79,47 @@ public:
         xTaskCreate(writer, "Writer", 4096, this, 10, &writer_task);
     }
 
+    run_header_t generate_header()
+    {
+        run_header_t<NUM_SOURCES> header = {0};
+        header.base_cycle_interval_ms = base_cycle_interval_ms;
+
+        // Set up header sources
+        header.num_sources = NUM_SOURCES;
+        for (int i = 0; i < NUM_SOURCES; i++)
+            header.entries[i] = data_sources[i].header_entry();
+
+        // Metadata
+        header.name = "New Run";
+        header.description = "No desc.";
+
+        // FIXME: Update these when data available!!
+        // Plan is to use GPS data to provide these.
+        header.start_time_epoch = 0;
+        header.location = run_location_t{
+            .longitude = .6,
+            .latitude = .5,
+        };
+    }
+
     void finish_current_run()
     {
         if (run_is_active)
         {
             // Note: Find some way to write dredges of data. In worst case
-            // currently there will be 512 bytes of data loss
+            // currently there will be BLOCK_SIZE bytes of data loss
             vTaskDelete(sampler_task);
             vTaskDelete(writer_task);
 
             active_run_file.close();
+
+            // Clear blocks
+            for (size_t i = 0; i < NUM_BLOCKS; i++)
+            {
+                blocks[i].mutex = xSemaphoreCreateMutex();
+                blocks[i].data_size = 0;
+            }
+
             run_is_active = false;
         }
     }

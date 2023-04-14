@@ -5,14 +5,21 @@ constexpr unsigned int hash(const char *s, int off = 0)
 {
     return !s[off] ? 5381 : (hash(s, off + 1) * 33) ^ s[off];
 }
+
 template <typename T>
-constexpr const char *type_name()
+constexpr const char *t()
 {
 #ifdef _MSC_VER
     return __FUNCSIG__;
 #else
     return __PRETTY_FUNCTION__;
 #endif
+}
+
+template <typename T>
+constexpr const char *characteristic_type_name()
+{
+    return t<T>();
 }
 
 /**
