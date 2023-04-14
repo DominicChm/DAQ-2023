@@ -2,7 +2,8 @@
 #include <RunManager.h>
 #include <DataSource.h>
 #include <communication/communication.h>
-#include <type_name.h>
+#include <util.h>
+#include <ui.h>
 
 T_DATA daq_data;
 
@@ -24,77 +25,35 @@ DataSource data_sources[] = {
 
 RunManager rm(1000, data_sources);
 
+UI ui(Serial);
+namespace commands
+{
+    void start_run(UI &ui)
+    {
+        rm.start_new_run();
+    }
+    void stop_run(UI &ui)
+    {
+        rm.finish_current_run();
+    }
+
+    void init()
+    {
+        ui.add_command("start", start_run);
+        ui.add_command("stop", stop_run);
+    }
+}
+
 void setup()
 {
     daq_data.electrons.voltage_sense36 = 0x01;
     daq_data.sus.bl_pot = 0x02;
     Serial.begin(115200);
-    rm.init_run();
     Serial.print("$ ");
-}
-
-void process_serial_command(char *c)
-{
-    char *cmd = strtok(c, " ");
-
-    if (cmd == nullptr)
-        return;
-
-    uint32_t cmd_hash = hash(cmd);
-
-    switch (cmd_hash)
-    {
-    case hash("start"):
-        rm.start_new_run();
-        break;
-
-    case hash("stop"):
-        rm.finish_current_run();
-        break;
-
-    default:
-        Serial.printf("Unknown command \"%s\"\n", cmd);
-    }
-}
-
-void ux()
-{
-    if (!Serial.available())
-        return;
-
-    static char sbuf[256];
-    static int idx;
-
-    char c = Serial.read();
-
-    // Ignore all carrige returns ( windows... >:( )
-    if (c == '\r')
-        return;
-    else if (c == '\b' && idx > 0)
-    {
-        idx--;
-        Serial.print("\b \b");
-        return;
-    }
-    else if (c != '\n')
-    {
-        sbuf[idx++] = c;
-
-        // Echo output
-        Serial.print(c);
-        return;
-    }
-
-    // replace newline with nullterm
-    sbuf[idx] = '\0';
-    idx = 0;
-
-    Serial.println();
-    process_serial_command(sbuf);
-    Serial.print("$ ");
+    commands::init();
 }
 
 void loop()
 {
-    ux();
+    ui.poll();
 }
