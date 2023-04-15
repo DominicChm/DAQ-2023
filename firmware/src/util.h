@@ -17,7 +17,8 @@ constexpr const char *t()
 }
 
 /**
- * Generates a characteristic type name for the passed type using GCC's __PRETTY_FUNCTION__
+ * Generates a characteristic type name for the passed 
+ * type using GCC's __PRETTY_FUNCTION__
  * This string should be parsable to get the actual type's name.
  */
 template <typename T>
