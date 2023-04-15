@@ -1,12 +1,12 @@
+#pragma once
 #include <Arduino.h>
 #include <util.h>
-#pragma once
 
 struct run_data_source_t
 {
     uint32_t cycle_interval; // ms between each record of this format
-    char *name;
-    char *type_name;
+    char name[128];
+    char type_name[128];
 
 } __attribute__((packed));
 
@@ -29,6 +29,8 @@ struct run_header_t
 
     run_header_t()
     {
+        name = nullptr;
+        description = nullptr;
     }
     
     run_header_t(const char *name, const char *description)

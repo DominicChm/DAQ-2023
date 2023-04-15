@@ -1,19 +1,18 @@
-#include <run_format.h>
+#include <Arduino.h>
+#include <CircularBuffer.h>
 #include <DataSource.h>
 #include <SD_MMC.h>
-#include <CircularBuffer.h>
-#include <Arduino.h>
+#include <run_format.h>
 
 #define INDEX_FILE_PATH "/__INDEX"
 #define BLOCK_SIZE 64
 #define NUM_BLOCKS 3
 #define BLOCK_OVERHEAD BLOCK_SIZE
 
-#define DONT_WRITE_HEADER
+// #define DONT_WRITE_HEADER
 
 template <size_t NUM_SOURCES>
-class RunManager
-{
+class RunManager {
     typedef run_header_t<NUM_SOURCES> header_t;
 
     DataSource (&_data_sources)[NUM_SOURCES];
@@ -25,22 +24,20 @@ class RunManager
     TaskHandle_t _sampler_task;
     TaskHandle_t _writer_task;
 
-    struct block_t
-    {
+    struct block_t {
         SemaphoreHandle_t mutex;
         size_t data_size;
         uint8_t data[BLOCK_SIZE + BLOCK_OVERHEAD];
     } _blocks[NUM_BLOCKS];
 
-public:
+   public:
     RunManager(uint32_t base_cycle_interval_ms, DataSource (&data_sources)[NUM_SOURCES]) : _data_sources(data_sources),
-                                                                                           _cycle_time_base_ms(base_cycle_interval_ms)
-    {
+                                                                                           _cycle_time_base_ms(base_cycle_interval_ms) {
+        init_blocks();
     }
 
-    header_t generate_header()
-    {
-        header_t header;
+    header_t generate_header() {
+        header_t header = {};
         header.cycle_time_base_ms = _cycle_time_base_ms;
 
         // Set up header sources
@@ -62,10 +59,8 @@ public:
         return header;
     }
 
-    bool init_run()
-    {
-        if (!SD_MMC.begin())
-        {
+    bool init_run() {
+        if (!SD_MMC.begin()) {
             return false;
         }
 
@@ -78,8 +73,7 @@ public:
         return true;
     }
 
-    void start_new_run()
-    {
+    void start_new_run() {
         finish_current_run();
         init_run();
 
@@ -88,16 +82,22 @@ public:
 
         // Create run file
         _active_run_file = SD_MMC.open(file_name, FILE_WRITE);
-        if (!_active_run_file)
-        {
+        if (!_active_run_file) {
             Serial.println("RUN FILE CREATION PROBLEM!!");
             return;
         }
 
         header_t header = generate_header();
+        Serial.println("Generated, new header!");
+
+#ifndef DONT_WRITE_HEADER
+        write_header(header);
+        Serial.println("Wrote header");
+#endif
 
         // Update the index with the new header.
         index_add_new(file_name, header);
+        Serial.println("Added header to index");
 
         _run_is_active = true;
 
@@ -106,17 +106,31 @@ public:
         xTaskCreate(writer, "Writer", 4096, this, 10, &_writer_task);
     }
 
-    void write_header(header_t header)
-    {
+    void write_header(header_t &header) {
         if (!_active_run_file)
             return;
-        _active_run_file.write(&header, offsetof(header_t, name));
+
+        _active_run_file.write((uint8_t *)&header, offsetof(header_t, name));
+
+        _active_run_file.print(header.name);
+        _active_run_file.write(0);
+
+        _active_run_file.print(header.description);
+        _active_run_file.write(0);
+
+        for (int i = 0; i < NUM_SOURCES; i++) {
+            _active_run_file.write((uint8_t *)&(header.entries[i]), sizeof(run_data_source_t));
+        }
+        
+        // Write the length of the header to file[0]
+        uint32_t len = _active_run_file.position();
+        _active_run_file.seek(0);
+        _active_run_file.write((uint8_t *)&len, sizeof(len));
+        _active_run_file.seek(len);
     }
 
-    void finish_current_run()
-    {
-        if (_run_is_active)
-        {
+    void finish_current_run() {
+        if (_run_is_active) {
             // Note: Find some way to write dredges of data. In worst case
             // currently there will be BLOCK_SIZE bytes of data loss
             vTaskDelete(_sampler_task);
@@ -125,36 +139,34 @@ public:
             _active_run_file.close();
 
             // Clear blocks
-            for (size_t i = 0; i < NUM_BLOCKS; i++)
-            {
-                _blocks[i].mutex = xSemaphoreCreateMutex();
-                _blocks[i].data_size = 0;
-            }
-
+            init_blocks();
             _run_is_active = false;
         }
     }
 
-    String get_random_file_name()
-    {
+    void init_blocks() {
+        for (size_t i = 0; i < NUM_BLOCKS; i++) {
+            _blocks[i].mutex = xSemaphoreCreateMutex();
+            _blocks[i].data_size = 0;
+        }
+    }
+
+    String get_random_file_name() {
         uint8_t rng_buf[16];
         esp_fill_random(rng_buf, sizeof(rng_buf));
 
         char id_buf[sizeof(rng_buf) * 2 + 2] = {'/'};
 
-        for (size_t i = 0; i < sizeof(rng_buf); i++)
-        {
+        for (size_t i = 0; i < sizeof(rng_buf); i++) {
             sprintf(&(id_buf[i * 2 + 1]), "%02X", rng_buf[i]);
         }
 
         return String(id_buf);
     }
 
-    void index_add_new(String file_name, run_header_t<NUM_SOURCES> &header)
-    {
+    void index_add_new(String file_name, run_header_t<NUM_SOURCES> &header) {
         File f = SD_MMC.open(INDEX_FILE_PATH, FILE_APPEND);
-        if (!f)
-        {
+        if (!f) {
             Serial.println("!! Error opening index file!");
             return;
         }
@@ -165,46 +177,38 @@ public:
         Serial.println("Instantiated index entry!");
     }
 
-    static void sampler(void *arg)
-    {
-
+    static void sampler(void *arg) {
         RunManager *self = (RunManager *)arg;
         TickType_t xLastWakeTime = xTaskGetTickCount();
 
         size_t block_idx = 0;
-        while (1)
-        {
+        while (1) {
             block_t *current_block = &(self->_blocks)[block_idx++];
             block_idx = block_idx % NUM_BLOCKS;
 
-            if (current_block->data_size != 0)
-            {
+            if (current_block->data_size != 0) {
                 Serial.println("FATAL ERROR: BLOCK OVERRUN (The sampler's next block's size was not equal to zero!)");
-                vTaskDelay(portMAX_DELAY); // Effectively stall the task.
+                vTaskDelay(portMAX_DELAY);  // Effectively stall the task.
             }
 
             xSemaphoreTake(current_block->mutex, portMAX_DELAY);
-            while (current_block->data_size < BLOCK_SIZE)
-            {
-                for (int i = 0; i < NUM_SOURCES; i++)
-                {
+            while (current_block->data_size < BLOCK_SIZE) {
+                for (int i = 0; i < NUM_SOURCES; i++) {
                     current_block->data_size += self->_data_sources[i].cycle(&(current_block->data)[current_block->data_size]);
                 }
                 vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(self->_cycle_time_base_ms));
-                Serial.println(current_block->data_size);
+                // Serial.println(current_block->data_size);
             }
             xSemaphoreGive(current_block->mutex);
         }
     }
 
-    static void writer(void *arg)
-    {
+    static void writer(void *arg) {
         RunManager *self = (RunManager *)arg;
         TickType_t xLastWakeTime = xTaskGetTickCount();
 
         size_t block_idx = 0;
-        while (1)
-        {
+        while (1) {
             block_t *current_block = &(self->_blocks)[block_idx++];
             block_idx = block_idx % NUM_BLOCKS;
 
@@ -216,7 +220,6 @@ public:
             Serial.println("Wrote block!");
         }
     }
-    void index_delete()
-    {
+    void index_delete() {
     }
 };
