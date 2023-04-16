@@ -5,11 +5,14 @@
 #include <run_format.h>
 
 #define INDEX_FILE_PATH "/__INDEX"
-#define BLOCK_SIZE 64
+#define BLOCK_SIZE 512
 #define NUM_BLOCKS 3
-#define BLOCK_OVERHEAD BLOCK_SIZE
-
+#define BLOCK_OVERHEAD 512
 // #define DONT_WRITE_HEADER
+
+// constexpr size_t min_block_size(int off = 0) {
+//     return off < NUM_SOURCES ? _data_sources[off]._data_size + min_block_size(off + 1) : 0;
+// }
 
 template <size_t NUM_SOURCES>
 class RunManager {
@@ -31,8 +34,11 @@ class RunManager {
     } _blocks[NUM_BLOCKS];
 
    public:
+    SemaphoreHandle_t sd_mutex;
+
     RunManager(uint32_t base_cycle_interval_ms, DataSource (&data_sources)[NUM_SOURCES]) : _data_sources(data_sources),
-                                                                                           _cycle_time_base_ms(base_cycle_interval_ms) {
+                                                                                           _cycle_time_base_ms(base_cycle_interval_ms),
+                                                                                           sd_mutex(xSemaphoreCreateMutex()) {
         init_blocks();
     }
 
@@ -76,19 +82,10 @@ class RunManager {
     void start_new_run() {
         finish_current_run();
         init_run();
-
-        String file_name = get_random_file_name();
-        Serial.printf("Beginning new run in %s\n", file_name.c_str());
-
-        // Create run file
-        _active_run_file = SD_MMC.open(file_name, FILE_WRITE);
-        if (!_active_run_file) {
-            Serial.println("RUN FILE CREATION PROBLEM!!");
-            return;
-        }
+        _active_run_file = create_run_file();
 
         header_t header = generate_header();
-        Serial.println("Generated, new header!");
+        Serial.println("Generated new header");
 
 #ifndef DONT_WRITE_HEADER
         write_header(header);
@@ -96,14 +93,27 @@ class RunManager {
 #endif
 
         // Update the index with the new header.
-        index_add_new(file_name, header);
+        index_add_new(_active_run_file.name(), header);
         Serial.println("Added header to index");
 
         _run_is_active = true;
 
         Serial.println("Creating tasks...");
-        xTaskCreate(sampler, "Sampler", 4096, this, 15, &_sampler_task);
-        xTaskCreate(writer, "Writer", 4096, this, 10, &_writer_task);
+        xTaskCreate(sampler_task, "Sampler", 4096, this, 15, &_sampler_task);
+        xTaskCreate(writer_task, "Writer", 4096, this, 10, &_writer_task);
+    }
+
+    File create_run_file() {
+        String file_name = get_random_file_name();
+        Serial.printf("Beginning new run in %s\n", file_name.c_str());
+
+        // Create run file
+        File f = SD_MMC.open(file_name, FILE_WRITE);
+        if (!_active_run_file) {
+            Serial.println("RUN FILE CREATION PROBLEM!!");
+        }
+
+        return f;
     }
 
     void write_header(header_t &header) {
@@ -121,7 +131,7 @@ class RunManager {
         for (int i = 0; i < NUM_SOURCES; i++) {
             _active_run_file.write((uint8_t *)&(header.entries[i]), sizeof(run_data_source_t));
         }
-        
+
         // Write the length of the header to file[0]
         uint32_t len = _active_run_file.position();
         _active_run_file.seek(0);
@@ -177,7 +187,12 @@ class RunManager {
         Serial.println("Instantiated index entry!");
     }
 
-    static void sampler(void *arg) {
+    /**
+     * Samples data at the interval defined by _cycle_time_base_ms,
+     * and writes the data into a block_t to be later handled by the writing
+     * task.
+     */
+    static void sampler_task(void *arg) {
         RunManager *self = (RunManager *)arg;
         TickType_t xLastWakeTime = xTaskGetTickCount();
 
@@ -203,23 +218,44 @@ class RunManager {
         }
     }
 
-    static void writer(void *arg) {
+    /**
+     * Waits for data in a block_t and writes it to disk.
+     * Lower priority than the sampler, which (hopefully)
+     * prevents SD accesses from blocking sampling.
+     */
+    static void writer_task(void *arg) {
         RunManager *self = (RunManager *)arg;
         TickType_t xLastWakeTime = xTaskGetTickCount();
 
         size_t block_idx = 0;
         while (1) {
+            // Select a block cyclically. (IE 0 -> 1 -> 2 -> 0 -> 1 ...)
             block_t *current_block = &(self->_blocks)[block_idx++];
             block_idx = block_idx % NUM_BLOCKS;
 
+            // Wait on the sampler to return the target block's mutex.
+            // Once this is taken we know that the sampler has
+            // filled the block, ready for writing.
             xSemaphoreTake(current_block->mutex, portMAX_DELAY);
+            if (current_block->data_size == 0) {
+                Serial.println("FATAL ERROR: ZERO-SIZE BLOCK ENCOUNTERED IN WRITER! (this signifies a desync between the sampler and writer. Maybe the sampler crashed?)");
+                vTaskDelay(portMAX_DELAY);  // Effectively stall the task.
+            }
+
+            // Take the SD mutex to gain exclusive rights to write to the SD card.
+            xSemaphoreTake(self->sd_mutex, portMAX_DELAY);
+
             self->_active_run_file.write(current_block->data, current_block->data_size);
             current_block->data_size = 0;
+
+            // Return mutexes to allow other things to access resources.
+            xSemaphoreGive(self->sd_mutex);
             xSemaphoreGive(current_block->mutex);
 
             Serial.println("Wrote block!");
         }
     }
+
     void index_delete() {
     }
 };

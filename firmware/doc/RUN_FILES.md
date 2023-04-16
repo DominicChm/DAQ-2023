@@ -46,7 +46,7 @@ For example, given a cycle time base of 100ms in addition to the previous exampl
 ```
 D1(5) = size(D1) * (5 // 1) + size(D2) * (5 // 2) 
 D1(5) =    1     *    5     +    1     *    2 
-D1(5) = 7 (It's right, I checked!)
+D1(5) = 7
 ``` 
 Some special handling in the actual stream will be needed because every value is polled at time=0, but this is the gist of it.
 ## Header

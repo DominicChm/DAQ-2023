@@ -4,8 +4,7 @@
 #include <util.h>
 
 class DataSource {
-    void *_data_source;
-    size_t _data_size;
+    const void *_data_source;
 
     const char *_name;
     const char *_type_name;
@@ -15,6 +14,8 @@ class DataSource {
     int32_t _cycles;
 
    public:
+    const size_t _data_size;
+
     /**
      * Constructs a new datasource. Note that the provided name's length is checked at compile time.
      * !! cycle_interval is in units of the base RunManager frequency. !!
@@ -22,11 +23,9 @@ class DataSource {
      * this value will be recorded every 10 * 10 = 100ms
      */
     template <typename T, size_t NAME_LEN>
-    DataSource(uint32_t interval_ms, T &dat, const char (&name)[NAME_LEN]) {
+    DataSource(uint32_t interval_ms, T &dat, const char (&name)[NAME_LEN]) : _data_size(sizeof(T)), _data_source(&dat) {
         static_assert(NAME_LEN < 32, "Name is too long! Max length is 31 chars");
 
-        _data_source = &dat;
-        _data_size = sizeof(T);
         _interval_ms = interval_ms;
         _name = (const char *)&name;
         _type_name = characteristic_type_name<T>();
