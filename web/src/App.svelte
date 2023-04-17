@@ -4,9 +4,11 @@
   import Counter from "./lib/Counter.svelte";
   import Navbar from "./lib/Navbar.svelte";
     import Dash from "./lib/Dash.svelte";
+    import FileList from "./lib/FileList.svelte";
 </script>
 
 <main>
+  <FileList />
   <Navbar />
   <Dash></Dash>
 </main>

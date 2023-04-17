@@ -180,7 +180,7 @@ void task_web(void* arg) {
 }
 
 bool init() {
-    Serial.println("Starting WIFI");
+    //Serial.println("Starting WIFI");
 
     WiFi.mode(WIFI_AP);
     WiFi.softAP("bdaq2");

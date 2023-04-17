@@ -5,7 +5,7 @@
 #include <run_format.h>
 
 #define INDEX_FILE_PATH "/__INDEX"
-#define BLOCK_SIZE 512
+#define BLOCK_SIZE 64
 #define NUM_BLOCKS 3
 #define BLOCK_OVERHEAD 512
 // #define DONT_WRITE_HEADER
@@ -33,6 +33,8 @@ class RunManager {
         uint8_t data[BLOCK_SIZE + BLOCK_OVERHEAD];
     } _blocks[NUM_BLOCKS];
 
+    header_t header = {0};
+
    public:
     SemaphoreHandle_t sd_mutex;
 
@@ -42,17 +44,18 @@ class RunManager {
         init_blocks();
     }
 
-    header_t generate_header() {
-        header_t header = {};
+    void update_header() {
+        header.header_version = HEADER_VERSION;
         header.cycle_time_base_ms = _cycle_time_base_ms;
+        header.num_entries = NUM_SOURCES;
 
         // Set up header sources
         for (int i = 0; i < NUM_SOURCES; i++)
             header.entries[i] = _data_sources[i].header_entry();
 
         // Metadata
-        header.set_name("NAME");
-        header.set_description("DESC");
+        strlcpy(header.name, "New Run", sizeof(header.name));
+        strlcpy(header.description, "A random, quirky, yet fun description!!", sizeof(header.description));
 
         // FIXME: Update these when data available!!
         // Plan is to use GPS data to provide these.
@@ -61,12 +64,11 @@ class RunManager {
             .longitude = .6,
             .latitude = .5,
         };
-
-        return header;
     }
 
     bool init_run() {
         if (!SD_MMC.begin()) {
+            Serial.println("No SD card detected!");
             return false;
         }
 
@@ -80,15 +82,20 @@ class RunManager {
     }
 
     void start_new_run() {
+        uint32_t t_start = millis();
+
         finish_current_run();
-        init_run();
+        if (!init_run()) return;
+
         _active_run_file = create_run_file();
 
-        header_t header = generate_header();
+        update_header();
         Serial.println("Generated new header");
 
 #ifndef DONT_WRITE_HEADER
-        write_header(header);
+
+        // TODO: MODIFY INDEX TO CONTAIN SIZE OF FILES AND THEIR APPROX DURATION.
+        write_header();
         Serial.println("Wrote header");
 #endif
 
@@ -101,6 +108,7 @@ class RunManager {
         Serial.println("Creating tasks...");
         xTaskCreate(sampler_task, "Sampler", 4096, this, 15, &_sampler_task);
         xTaskCreate(writer_task, "Writer", 4096, this, 10, &_writer_task);
+        Serial.printf("Logging started in %ums! Send \"stop\" to finish.\n", millis() - t_start);
     }
 
     File create_run_file() {
@@ -109,34 +117,19 @@ class RunManager {
 
         // Create run file
         File f = SD_MMC.open(file_name, FILE_WRITE);
-        if (!_active_run_file) {
-            Serial.println("RUN FILE CREATION PROBLEM!!");
+        if (!f) {
+            Serial.println("RUN FILE CREATION PROBLEM!! RESTARTING.");
+            ESP.restart();
         }
 
         return f;
     }
 
-    void write_header(header_t &header) {
+    void write_header() {
         if (!_active_run_file)
             return;
 
-        _active_run_file.write((uint8_t *)&header, offsetof(header_t, name));
-
-        _active_run_file.print(header.name);
-        _active_run_file.write(0);
-
-        _active_run_file.print(header.description);
-        _active_run_file.write(0);
-
-        for (int i = 0; i < NUM_SOURCES; i++) {
-            _active_run_file.write((uint8_t *)&(header.entries[i]), sizeof(run_data_source_t));
-        }
-
-        // Write the length of the header to file[0]
-        uint32_t len = _active_run_file.position();
-        _active_run_file.seek(0);
-        _active_run_file.write((uint8_t *)&len, sizeof(len));
-        _active_run_file.seek(len);
+        _active_run_file.write((uint8_t *)&header, sizeof(header_t));
     }
 
     void finish_current_run() {
@@ -151,6 +144,8 @@ class RunManager {
             // Clear blocks
             init_blocks();
             _run_is_active = false;
+
+            Serial.println("Existing run finished and closed.");
         }
     }
 
@@ -180,7 +175,19 @@ class RunManager {
             Serial.println("!! Error opening index file!");
             return;
         }
-        f.printf(R"("%s": {"name":"%s"})", file_name.c_str(), header.name);
+        f.printf(R"("%s": {
+            "name":"%s", 
+            "description": "%s",
+            "time_base": %u,
+            "start_time": %u,
+            "location": [%f, %f]
+        },)",
+                 file_name.c_str(),
+                 header.name,
+                 header.description,
+                 header.cycle_time_base_ms,
+                 header.start_time_epoch,
+                 header.location.longitude, header.location.latitude);
         f.println();
         f.close();
 
@@ -254,6 +261,10 @@ class RunManager {
 
             Serial.println("Wrote block!");
         }
+    }
+
+    constexpr size_t header_size() {
+        return sizeof(header_t);
     }
 
     void index_delete() {

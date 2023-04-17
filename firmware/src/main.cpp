@@ -35,6 +35,14 @@ void init() {
 }
 }  // namespace commands
 
+// void write_dev() {
+//     // yes, i'm manually writing json. deal with it.
+//     File f = SD_MMC.open("/__DEV", FILE_WRITE);
+//     f.println("{");
+//     f.printf("\"header_size\": %u,", rm.header_size());
+//     f.println("}");
+// }
+
 void setup() {
     daq_data.electrons.voltage_sense36 = 0x01;
     daq_data.sus.bl_pot = 0x02;
@@ -45,6 +53,5 @@ void setup() {
 }
 
 void loop() {
-
     ui.poll();
 }
