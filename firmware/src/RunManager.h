@@ -47,12 +47,7 @@ class RunManager {
     void update_header() {
         header.header_version = HEADER_VERSION;
         header.cycle_time_base_ms = _cycle_time_base_ms;
-        header.num_entries = NUM_SOURCES;
-
-        // Set up header sources
-        for (int i = 0; i < NUM_SOURCES; i++)
-            header.entries[i] = _data_sources[i].header_entry();
-
+        
         // Metadata
         strlcpy(header.name, "New Run", sizeof(header.name));
         strlcpy(header.description, "A random, quirky, yet fun description!!", sizeof(header.description));
@@ -64,6 +59,13 @@ class RunManager {
             .longitude = .6,
             .latitude = .5,
         };
+
+        header.chksum_intermediate = hash(&header, offsetof(header, num_entries), 0);
+
+        // Set up header sources
+        header.num_entries = NUM_SOURCES;
+        for (int i = 0; i < NUM_SOURCES; i++)
+            header.entries[i] = _data_sources[i].header_entry();
     }
 
     bool init_run() {
@@ -180,7 +182,7 @@ class RunManager {
             "description": "%s",
             "time_base": %u,
             "start_time": %u,
-            "location": [%f, %f]
+            "location": {"longitude": %f, "latitude": %f}
         },)",
                  file_name.c_str(),
                  header.name,

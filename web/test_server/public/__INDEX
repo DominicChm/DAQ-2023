@@ -1,35 +1,35 @@
-"FA9FA53F6CCDE87E386858B4E2A45074": {
+"BC17943ADF35A2F1932F6990946B2A32": {
             "name":"New Run", 
             "description": "A random, quirky, yet fun description!!",
             "time_base": 1000,
             "start_time": 0,
-            "location": [0.600000, 0.500000]
+            "location": {"longitude": 0.600000, "latitude": 0.500000}
         },
-"F844E0C2FF9EC82856B50E7015D78622": {
+"BD9BC3C0913393679705B022B1D00E35": {
             "name":"New Run", 
             "description": "A random, quirky, yet fun description!!",
             "time_base": 1000,
             "start_time": 0,
-            "location": [0.600000, 0.500000]
+            "location": {"longitude": 0.600000, "latitude": 0.500000}
         },
-"37A99A839BD85B6B86D8F12DEBB94DF1": {
+"C81A7829446061886AEC7FCFD6F580B8": {
             "name":"New Run", 
             "description": "A random, quirky, yet fun description!!",
             "time_base": 1000,
             "start_time": 0,
-            "location": [0.600000, 0.500000]
+            "location": {"longitude": 0.600000, "latitude": 0.500000}
         },
-"9F654A26DB896547CE78CAB5537246D2": {
+"05B138FB1384410B6FCF6E688AEC0D6B": {
             "name":"New Run", 
             "description": "A random, quirky, yet fun description!!",
             "time_base": 1000,
             "start_time": 0,
-            "location": [0.600000, 0.500000]
+            "location": {"longitude": 0.600000, "latitude": 0.500000}
         },
-"C30AD9BF33E865B522CDB6D33D0EBD3C": {
+"/TT.mp4": {
             "name":"New Run", 
             "description": "A random, quirky, yet fun description!!",
             "time_base": 1000,
             "start_time": 0,
-            "location": [0.600000, 0.500000]
+            "location": {"longitude": 0.600000, "latitude": 0.500000}
         },

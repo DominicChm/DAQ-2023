@@ -3,14 +3,14 @@
   import viteLogo from "/vite.svg";
   import Counter from "./lib/Counter.svelte";
   import Navbar from "./lib/Navbar.svelte";
-    import Dash from "./lib/Dash.svelte";
-    import FileList from "./lib/FileList.svelte";
+  import Dash from "./lib/Dash.svelte";
+  import FileListModal from "./lib/FileListModal.svelte";
 </script>
 
 <main>
-  <FileList />
+  <FileListModal />
   <Navbar />
-  <Dash></Dash>
+  <Dash />
 </main>
 
 <style>

@@ -6,6 +6,11 @@ constexpr unsigned int hash(const char *s, int off = 0)
     return !s[off] ? 5381 : (hash(s, off + 1) * 33) ^ s[off];
 }
 
+constexpr unsigned int hash(uint8_t *s, size_t len, int off = 0)
+{
+    return off >= len ? 5381 : (hash(s, len, off + 1) * 33) ^ s[off];
+}
+
 template <typename T>
 constexpr const char *t()
 {

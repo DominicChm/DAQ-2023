@@ -1,4 +1,6 @@
 <script lang="ts">
+    import { runSelectModalOpen } from "../appStores";
+
     let selected = "";
 </script>
 
@@ -20,4 +22,5 @@
             <option>Dash3</option>
         </select>
     </div>
+    <button class="btn btn-primary" on:click={() => $runSelectModalOpen = true}>Open</button>
 </div>

@@ -24,6 +24,7 @@ struct run_header_t {
     run_location_t location;                 // Location where this run was done. Recorded at run start.
     char name[1024];                         // Self-explanatory
     char description[4096];                  // Self-explanatory
+    uint32_t checksum_intermediate;
     uint32_t num_entries;                    // Number of entries
     run_data_source_t entries[NUM_SOURCES];  // Formats contained in this file.
 } __attribute__((packed));
