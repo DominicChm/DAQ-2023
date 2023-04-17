@@ -47,7 +47,7 @@ class RunManager {
     void update_header() {
         header.header_version = HEADER_VERSION;
         header.cycle_time_base_ms = _cycle_time_base_ms;
-        
+
         // Metadata
         strlcpy(header.name, "New Run", sizeof(header.name));
         strlcpy(header.description, "A random, quirky, yet fun description!!", sizeof(header.description));
@@ -60,7 +60,7 @@ class RunManager {
             .latitude = .5,
         };
 
-        header.chksum_intermediate = hash(&header, offsetof(header, num_entries), 0);
+        header.checksum_intermediate = hash((uint8_t *)&header, offsetof(header_t, checksum_intermediate));
 
         // Set up header sources
         header.num_entries = NUM_SOURCES;

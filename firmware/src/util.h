@@ -1,19 +1,20 @@
 #pragma once
 #include <Arduino.h>
 // https://stackoverflow.com/a/59522794/16238567
-constexpr unsigned int hash(const char *s, int off = 0)
-{
+constexpr unsigned int hash(const char *s, int off = 0) {
     return !s[off] ? 5381 : (hash(s, off + 1) * 33) ^ s[off];
 }
 
-constexpr unsigned int hash(uint8_t *s, size_t len, int off = 0)
-{
-    return off >= len ? 5381 : (hash(s, len, off + 1) * 33) ^ s[off];
+unsigned int hash(uint8_t *s, size_t len) {
+    unsigned int h = 5381;
+    for(int i = len - 1; i >= 0; i--) {
+        h = h * 33 ^ s[i];
+    }
+    return h;
 }
 
 template <typename T>
-constexpr const char *t()
-{
+constexpr const char *t() {
 #ifdef _MSC_VER
     return __FUNCSIG__;
 #else
@@ -22,13 +23,12 @@ constexpr const char *t()
 }
 
 /**
- * Generates a characteristic type name for the passed 
+ * Generates a characteristic type name for the passed
  * type using GCC's __PRETTY_FUNCTION__
  * This string should be parsable to get the actual type's name.
  */
 template <typename T>
-constexpr const char *characteristic_type_name()
-{
+constexpr const char *characteristic_type_name() {
     return t<T>();
 }
 
@@ -36,8 +36,7 @@ constexpr const char *characteristic_type_name()
  * Copies a string to heap-allocated memory, and sets the passed pointer to said memory.
  * If heap memory already exists at str_dest, it is realloced.
  */
-void str2heap(char **str_dest, const char *str)
-{
+void str2heap(char **str_dest, const char *str) {
     // Make size always at least 1.
     size_t s = str == nullptr ? 1 : strlen(str) + 1;
 

@@ -90,3 +90,12 @@ export function apiLoadData(buf: ArrayBuffer, head) {
         data: p.data
     }));
 }
+
+function hash(buf: ArrayBuffer,len): number {
+    buf = new Uint8Array(buf);
+    let h = 5381;
+    for(let i = len - 1; i >= 0; i--) {
+        h = (h * 33 ^ buf[i]) & 0xFFFFFFFF;
+    }
+    return h;
+}
