@@ -21,7 +21,15 @@
     function getVar(v) {
         return "hsl(" + getComputedStyle(document.documentElement).getPropertyValue(v) + ")";
     }
-    console.log(getVar("hsl(--bc)"))
+    console.log(getVar("hsl(--bc)"));
+
+    
+    // https://www.30secondsofcode.org/js/s/lcm/
+    const lcm = (...arr) => {
+        const gcd = (x, y) => (!y ? x : gcd(y, x % y));
+        const _lcm = (x, y) => (x * y) / gcd(x, y);
+        return [...arr].reduce((a, b) => _lcm(a, b));
+    };
 
     onMount(() => {
         let data = [
@@ -39,7 +47,7 @@
                         match: [matchSyncKeys, matchSyncKeys],
                     },
                     points: {
-                        size: 7
+                        size: 7,
                     },
                 },
                 focus: {
@@ -49,13 +57,10 @@
                 height: 300,
                 scales: { x: { time: false } },
                 axes: [
-                    { stroke: getVar("--bc"), grid: { stroke:getVar("--b1") } },
+                    { stroke: getVar("--bc"), grid: { stroke: getVar("--b1") } },
                     { stroke: getVar("--bc"), grid: { stroke: getVar("--b1") } },
                 ],
-                series: [
-                    { label: "x" }, 
-                    { label: "y", stroke: "red" }
-                ],
+                series: [{ label: "x" }, { label: "y", stroke: "red" }],
             },
             data,
             chartContainer
