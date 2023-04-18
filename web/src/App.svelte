@@ -1,7 +1,4 @@
 <script lang="ts">
-  import svelteLogo from "./assets/svelte.svg";
-  import viteLogo from "/vite.svg";
-  import Counter from "./lib/Counter.svelte";
   import Navbar from "./lib/Navbar.svelte";
   import Dash from "./lib/Dash.svelte";
   import FileListModal from "./lib/FileListModal.svelte";

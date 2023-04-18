@@ -2,6 +2,9 @@
     import gridHelp from "svelte-grid/build/helper";
     import Grid from "svelte-grid";
     import DashChart from "./DashChart.svelte";
+    import uPlot from "uplot";
+
+    let cursorSync = uPlot.sync("main");
 
     let items = [
         {
@@ -25,13 +28,14 @@
         },
     ];
 
+
     const cols = [[1200, 6]];
 </script>
 
 <Grid gap={[10, 5]} {items} {cols} rowHeight={150} let:item let:dataItem >
     <div class="card card-bordered bg-base-200 h-full">
         <div class="card-body h-full" >
-          <DashChart></DashChart>
+          <DashChart {cursorSync}></DashChart>
         </div>
       </div>
       
