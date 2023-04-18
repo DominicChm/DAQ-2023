@@ -1,6 +1,7 @@
 <script lang="ts">
     import { onMount } from "svelte";
     import uplot from "uplot";
+    import { selectedRunLoadedData } from "../apiStores";
 
     export let cursorSync: uplot.SyncPubSub;
 
@@ -9,7 +10,7 @@
 
     let clientH, clientW;
     // $: console.log(ch);
-
+    $: console.log($selectedRunLoadedData);
     // Updates graph sizes when their container changes
     $: {
         u?.setSize({
@@ -19,11 +20,13 @@
     }
 
     function getVar(v) {
-        return "hsl(" + getComputedStyle(document.documentElement).getPropertyValue(v) + ")";
+        return (
+            "hsl(" +
+            getComputedStyle(document.documentElement).getPropertyValue(v) +
+            ")"
+        );
     }
-    console.log(getVar("hsl(--bc)"));
 
-    
     // https://www.30secondsofcode.org/js/s/lcm/
     const lcm = (...arr) => {
         const gcd = (x, y) => (!y ? x : gcd(y, x % y));
@@ -32,10 +35,8 @@
     };
 
     onMount(() => {
-        let data = [
-            [1, 2, 3, 4, 5],
-            [1, 3, 2, 5, 4],
-        ];
+            
+        
         const matchSyncKeys = (own, ext) => own == ext;
 
         u = new uplot(
@@ -57,10 +58,20 @@
                 height: 300,
                 scales: { x: { time: false } },
                 axes: [
-                    { stroke: getVar("--bc"), grid: { stroke: getVar("--b1") } },
-                    { stroke: getVar("--bc"), grid: { stroke: getVar("--b1") } },
+                    {
+                        stroke: getVar("--bc"),
+                        grid: { stroke: getVar("--b1") },
+                    },
+                    {
+                        stroke: getVar("--bc"),
+                        grid: { stroke: getVar("--b1") },
+                    },
                 ],
-                series: [{ label: "x" }, { label: "y", stroke: "red" }],
+                series: [
+                    { label: "x" },
+                    { label: "data0", stroke: "red", spanGaps: true},
+                    { label: "data3", stroke: "green", spanGaps: true},
+                ],
             },
             data,
             chartContainer
@@ -75,4 +86,10 @@
     });
 </script>
 
-<div class="w-full h-full text-inherit" bind:this={chartContainer} bind:clientHeight={clientH} bind:clientWidth={clientW} on:pointerdown|stopPropagation />
+<div
+    class="w-full h-full text-inherit"
+    bind:this={chartContainer}
+    bind:clientHeight={clientH}
+    bind:clientWidth={clientW}
+    on:pointerdown|stopPropagation
+/>

@@ -55,6 +55,34 @@ export function apiParseHeader(buf: ArrayBuffer) {
     return { ...header, entries, size } as typeof header & { entries: typeof entries, size: number };
 }
 
+function setupData(reference) {
+    if (typeof reference == "object") {
+        let dat = {};
+        for (const k in reference) {
+            dat[k] = setupData(reference[k]);
+        }
+        return dat;
+    } else {
+        return [];
+    }
+}
+
+function mergeData(dat, newReading) {
+    if (dat == null) {
+        dat = setupData(newReading);
+    }
+
+    if (typeof newReading == "object") {
+        for (const k in newReading) {
+            dat[k] = mergeData(dat[k], newReading[k]);
+        }
+    } else {
+        dat.push(newReading);
+    }
+
+    return dat;
+}
+
 export function apiLoadData(buf: ArrayBuffer, head) {
     buf = buf.slice(head.size);
 
@@ -63,7 +91,7 @@ export function apiLoadData(buf: ArrayBuffer, head) {
         ...e,
         cycle: 0,
         source_type: getSourceType(e.type_name),
-        data: []
+        data: null
     }));
 
     let idx = 0, c = 0;
@@ -73,28 +101,31 @@ export function apiLoadData(buf: ArrayBuffer, head) {
         for (let i = 0; i < pe.length; i++) {
             const e = pe[i];
 
-            if (--e.cycle > 0) continue;
-            e.cycle = e.cycle_interval;
-            e.data.push({
-                x: c * head.cycle_time_base_ms,
-                y: e.source_type.readLE(buf, idx)
-            });
+            if (--e.cycle > 0) {
+                e.data.push(null)
+                continue;
+            }
 
+            const nextDat = e.source_type.readLE(buf, idx);
+
+            e.data = mergeData(e.data, nextDat);
+            e.cycle = e.cycle_interval;
             idx += e.source_type.size;
         }
         c++;
     }
 
-    return pe.map(p => ({
-        name: p.name,
-        data: p.data
-    }));
+    const totalData = Object.fromEntries(pe.map(p => [p.name, p.data]));
+    return {
+        __TIME: new Array(c).fill(0).map((_, i) => i * head.cycle_time_base_ms),
+        ...totalData,
+    }
 }
 
-function hash(buf: ArrayBuffer,len): number {
+function hash(buf: ArrayBuffer, len): number {
     buf = new Uint8Array(buf);
     let h = 5381;
-    for(let i = len - 1; i >= 0; i--) {
+    for (let i = len - 1; i >= 0; i--) {
         h = (h * 33 ^ buf[i]) & 0xFFFFFFFF;
     }
     return h;
