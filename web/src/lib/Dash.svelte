@@ -28,23 +28,22 @@
         },
     ];
 
-
     const cols = [[1200, 6]];
 </script>
 
-<Grid gap={[10, 5]} {items} {cols} rowHeight={150} let:item let:dataItem >
-    <div class="card card-bordered bg-base-200 h-full">
-        <div class="card-body h-full" >
-          <DashChart {cursorSync}></DashChart>
+<div class="overflow-y-scroll flex-1">
+    <Grid gap={[10, 5]} {items} {cols} rowHeight={150} let:item let:dataItem let:movePointerDown>
+        <div class="card card-bordered bg-base-200 h-full overflow-hidden">
+            <div class="card-body h-full p-0 overflow-hidden" >
+                <DashChart {cursorSync} />
+            </div>
         </div>
-      </div>
-      
-</Grid>
+    </Grid>
+</div>
 
 <style>
     :global(.svlt-grid-shadow) {
-      /* Back shadow */
-      background: hsl(var(--nc)) !important;
-      border-radius: 1rem;
+        background: hsl(var(--nc)) !important;
+        border-radius: 1rem;
     }
-  </style>
+</style>
