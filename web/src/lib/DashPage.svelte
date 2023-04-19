@@ -59,7 +59,9 @@
             </svg>
         </button>
     </div> -->
-    <AutoComplete items={dashboards} bind:selectedItem={selectedDashboard} />
+    <div class="min-w-0">
+        <AutoComplete items={dashboards} bind:selectedItem={selectedDashboard} />
+    </div>
     <div class="px-2 mx-2">
         <span class="text-lg font-bold"> ESPDAQ 2023 </span>
     </div>
@@ -69,14 +71,16 @@
 </div>
 
 <!-- Dashboard -->
-<div class="overflow-y-scroll flex-1">
-    <Grid gap={[10, 5]} {items} {cols} rowHeight={100} let:item let:dataItem let:movePointerDown>
-        <div class="card card-bordered bg-base-200 h-full overflow-hidden">
-            <div class="card-body h-full p-0 overflow-hidden">
-                <DashChart {cursorSync} {dataStore} data={dataItem?.data} />
+<div class="overflow-y-scroll flex-1 ">
+    <div class="min-w-0 lg:max-w-full max-w-[95%]">
+        <Grid gap={[10, 5]} {items} {cols} rowHeight={100} let:item let:dataItem let:movePointerDown>
+            <div class="card card-bordered bg-base-200 h-full overflow-hidden">
+                <div class="card-body h-full p-0 overflow-hidden">
+                    <DashChart {cursorSync} {dataStore} data={dataItem?.data} />
+                </div>
             </div>
-        </div>
-    </Grid>
+        </Grid>
+    </div>
 </div>
 
 <style>
@@ -91,5 +95,4 @@
         padding: 0;
         align-items: center;
     }
-
 </style>

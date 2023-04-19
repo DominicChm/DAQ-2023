@@ -19,6 +19,7 @@ body {
 /* Autocomplete styling */
 .autocomplete {
     padding: 0 !important;
+    min-width: 0 !important;
 }
 
 .autocomplete::after {
@@ -31,8 +32,7 @@ body {
     border: none !important;
     margin-top: 0.5rem;
     box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow);
-
-
+    min-width: fit-content;
 }
 
 .autocomplete-list-item {
@@ -67,4 +67,12 @@ body {
 
 .selected:not(.confirmed, :hover) {
     background-color: inherit !important;
+}
+
+.input-container {
+    min-width: 0 !important;
+}
+
+.autocomplete-input {
+    min-width: 0 !important;
 }
