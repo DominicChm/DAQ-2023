@@ -1,11 +1,11 @@
 <script lang="ts">
     import { get, type Readable } from "svelte/store";
     import uPlot from "uplot";
-    import { mapDotNotations } from "../util";
+    import { dotNotationLookup, mapDotNotations } from "../util";
     import { onDestroy, onMount } from "svelte";
     import type { tLoadedApiDataContainer } from "../api";
     import { getVar } from "../util";
-    
+
     export let showLegend = true;
     export let dataStore: Readable<tLoadedApiDataContainer>;
     export let cursorSync: uPlot.SyncPubSub;
@@ -27,20 +27,38 @@
         });
     }
 
-    function getSeries(sources) {
-        let dataSeries = Object.entries(sources).map(([k, v]: [any, any]) => ({ label: k, stroke: v.color, spanGaps: true }));
+    function getSeries(sourceEntries) {
+        let dataSeries = sourceEntries.map(([k, v]: [any, any]) => ({ label: k, stroke: v.color, spanGaps: true }));
         return [{ label: "x" }, ...dataSeries];
+    }
+
+    function resolveData(sources, data) {
+        // Map sources to their data, then filter for existing data.
+        const validSourceEntries = Object.entries(sources).filter(([k, v]) => data[k] != null);
+
+        const seriesData = [data.__TIME, ...validSourceEntries.map(([k, v]) => data[k])];
+        const series = getSeries(validSourceEntries);
+
+        return {
+            data: seriesData,
+            series,
+        };
     }
 
     function initPlot(sources, chartContainer, legendContainer, cursorSync) {
         if (sources == null || chartContainer == null) return;
 
+        // If re-running initPlot (ie sources changed)
+        // just recreate the plot. No reason to bother
+        // syncing or anything.
+        // NOTE: This is TERRIBLE for performance.
+        // Make sure to limit calls that update sources.
         if (plt) plt.destroy();
         if (unsubPlt) unsubPlt();
 
         let sourceData = get(dataStore);
 
-        const data = [sourceData.__TIME, ...mapDotNotations(sourceData, Object.keys(sources))];
+        const { data, series } = resolveData(sources, sourceData);
         //console.log(data, sources, chartContainer, legendContainer, cursorSync);
 
         const matchSyncKeys = (own, ext) => own == ext;
@@ -78,7 +96,7 @@
                     },
                     show: showLegend,
                 },
-                series: getSeries(sources),
+                series,
             },
             data,
             chartContainer
@@ -95,11 +113,22 @@
         });
     }
 
-    $: initPlot(sources, chartContainer, legendContainer, cursorSync);
+    let throttleTout = null;
+    function throttledPlotInit(sources, chartContainer, legendContainer, cursorSync) {
+        if(throttleTout) clearTimeout(throttleTout);
+        throttleTout = setTimeout(() => {
+            initPlot(sources, chartContainer, legendContainer, cursorSync);
+            throttleTout = null;
+        }, 50)
+    }
+
+    // Reactive statement that initializes the plot when any of args change.
+    // Mainly concerned with `sources`
+    $: throttledPlotInit(sources, chartContainer, legendContainer, cursorSync);
 
     onDestroy(() => {
-        plt?.destroy();
         if (unsubPlt) unsubPlt();
+        plt?.destroy();
     });
 </script>
 

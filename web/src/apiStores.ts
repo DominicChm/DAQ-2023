@@ -1,6 +1,7 @@
 import { derived, readable, writable, type Writable } from "svelte/store";
 import { apiGetIndex, apiLoadData, apiParseHeader, type tLoadedApiDataContainer } from "./api";
 import { url as envUrl } from "./url";
+import dot from "dot-object"
 
 // https://javascript.info/fetch-progress
 // https://javascript.info/fetch-abort#:~:text=To%20be%20able%20to%20cancel,how%20to%20work%20with%20AbortController%20.
@@ -58,7 +59,9 @@ export function cancelableLoadingStore(urlStore: Writable<null | string>, progre
 
             let header = apiParseHeader(dataBuf);
             let data = apiLoadData(dataBuf, header);
-            set(data);
+            dot.keepArray = true;
+            let dotNotationData = dot.dot(data);
+            set(dotNotationData);
         } catch (e) {
             cancel();
             progressStore.set(null);

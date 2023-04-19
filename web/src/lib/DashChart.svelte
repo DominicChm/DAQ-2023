@@ -1,7 +1,7 @@
 <script lang="ts">
     import { onDestroy, onMount } from "svelte";
 
-    import type { tLoadedApiData, tLoadedApiDataContainer } from "../api";
+    import type { tChartDefinition, tLoadedApiData, tLoadedApiDataContainer } from "../api";
     import { getVar, mapDotNotations } from "../util";
     import Portal from "svelte-portal";
     import { MagnifyingGlass, PencilSimple } from "phosphor-svelte";
@@ -9,6 +9,7 @@
     import Chart from "./Chart.svelte";
     import type { Readable } from "svelte/store";
     import AutoComplete from "simple-svelte-autocomplete";
+    import ChartEditor from "./ChartEditor.svelte";
 
     export let dataStore: Readable<tLoadedApiDataContainer>;
     export let cursorSync: uPlot.SyncPubSub;
@@ -16,14 +17,16 @@
 
     let legendContainer;
 
-    let testDataDef = {
+
+
+    let testDataDef: tChartDefinition = {
         sources: {
             data1: {
-                color: "red",
+                color: "#000",
                 name: "Custom data1 label",
             },
             data2: {
-                color: "orange",
+                color: "#000",
                 name: "Custom data2 label",
             },
         },
@@ -33,15 +36,18 @@
 
     let isEditing = false;
     let isZooming = false;
+
     function setZooming(state) {
         isZooming = state;
     }
+
     function setEditing(state) {
         isEditing = state;
     }
 
-    function saveEdits() {
+    function saveEdits({detail}) {
         setEditing(false);
+        testDataDef = detail;
     }
 
     function cancelEdits() {
@@ -54,8 +60,8 @@
     <div class="flex justify-between prose w-auto max-w-none max-h-14">
         <div class="flex items-center gap-2 revealer">
             <h3 class="bg-neutral block px-3 m-0 py-2 rounded-br-2xl cursor-move select-none h-full">{testDataDef.chartName}</h3>
-            <button class="btn btn-ghost btn-sm loc-hidden" on:pointerdown|stopPropagation on:click={() => setEditing(true)}><PencilSimple size={24}/></button>
-            <button class="btn btn-ghost btn-sm loc-hidden" on:pointerdown|stopPropagation on:click={() => setZooming(true)}><MagnifyingGlass size={24}/></button>
+            <button class="btn btn-ghost btn-sm loc-hidden" on:pointerdown|stopPropagation on:click={() => setEditing(true)}><PencilSimple size={24} /></button>
+            <button class="btn btn-ghost btn-sm loc-hidden" on:pointerdown|stopPropagation on:click={() => setZooming(true)}><MagnifyingGlass size={24} /></button>
         </div>
         <div on:pointerdown|stopPropagation bind:this={legendContainer} />
     </div>
@@ -64,47 +70,7 @@
 
 <!-- Card Edit Modal -->
 {#if isEditing}
-    <Portal>
-        <div class="modal modal-open" transition:fade={{ duration: 100 }}>
-            <div class="modal-box w-11/12 max-w-full flex flex-col" style="height: 90%;">
-                <h3 class="font-bold text-lg">Edit Chart</h3>
-                <div class="flex-1 flex min-h-0">
-                    <div class="grid w-full grid-rows-[1fr_1fr] lg:grid-rows-none lg:grid-cols-[1fr_25rem] items-stretch">
-                        <Chart {cursorSync} {dataStore} sources={testDataDef.sources} showLegend={false} gridColor={getVar("--b2")}/>
-                        <div class="flex flex-col gap-2">
-                            <div class="flex-1">
-                                <div class="overflow-x-hidden">
-                                    <table class="table">
-                                        <thead>
-                                            <tr>
-                                                <th />
-                                                <th>Data Path</th>
-                                                <th>Job</th>
-                                                <th>Favorite Color</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <!-- row 1 -->
-                                            <tr>
-                                                <th>1</th>
-                                                <td><AutoComplete items={[1, 2, 3]} /></td>
-                                                <td>Quality Control Specialist</td>
-                                                <td>Blue</td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                            <div class="inline-block self-end">
-                                <button class="btn" on:click={cancelEdits}>Cancel</button>
-                                <button class="btn btn-primary" on:click={saveEdits}>Save</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </Portal>
+    <ChartEditor definition={testDataDef} {cursorSync} {dataStore} on:cancel={cancelEdits} on:commit={saveEdits} />
 {/if}
 
 {#if isZooming}
@@ -130,7 +96,5 @@
         /* opacity: 0; */
     }
 
-    table :global(.autocomplete) {
-        border-color: hsl(var(--b3)) !important;
-    }
+
 </style>
