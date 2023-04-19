@@ -1,8 +1,10 @@
 <script lang="ts">
     import { onMount } from "svelte";
+    import type { Readable } from "svelte/store";
     import uplot from "uplot";
-    import { isLoaded, selectedRunLoadedData } from "../apiStores";
+    import type { tLoadedApiData } from "../api";
 
+    export let dataStore: Readable<tLoadedApiData>;
     export let cursorSync: uplot.SyncPubSub;
 
     let chartContainer;
@@ -30,7 +32,7 @@
         return [...arr].reduce((a, b) => _lcm(a, b));
     };
 
-    selectedRunLoadedData.subscribe((sources) => {
+    dataStore.subscribe((sources) => {
         if (plt) plt.destroy();
 
         if (sources == null) return;

@@ -1,26 +1,15 @@
 <script lang="ts">
-  import { isLoaded, polledRunEntries, selectedRun, selectedRunData, selectedRunHeader, selectedRunLoadedData } from "../apiStores";
+    import { createEventDispatcher } from "svelte";
+  import { polledRunEntries } from "../apiStores";
   import { runSelectModalOpen } from "../appStores";
 
-  $: if ($isLoaded) {
-    $runSelectModalOpen = false;
-  }
+  const dispatch = createEventDispatcher();
 
-  function setRun(u) {
-    $selectedRun = u;
+  function dispatchOpened(fileName: string) {
+    dispatch("opened", fileName);
   }
 </script>
 
 {#each $polledRunEntries as [file_path, i]}
-  <p>{file_path}, {i.name} <button class="btn" on:click={() => setRun(file_path)}>Set</button></p>
+  <p>{file_path}, {i.name} <button class="btn" on:click={() => dispatchOpened(file_path)}>Set</button></p>
 {/each}
-<button class="btn" on:click={() => setRun(null)}>Cancel Load/Unload</button>
-{#if typeof $selectedRunData == "number"}
-  <p>{$selectedRunData * 100}% loaded</p>
-{:else if $selectedRunData instanceof ArrayBuffer}
-  <p>Loaded!</p>
-  <!-- <pre>{JSON.stringify($selectedRunHeader, null, 2)}</pre> -->
-  <!-- <pre>{JSON.stringify($selectedRunLoadedData, null, 2)}</pre> -->
-{:else}
-  <p>Data Unloaded</p>
-{/if}

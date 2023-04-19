@@ -1,4 +1,4 @@
-import { derived, readable, writable } from "svelte/store";
+import { derived, readable, writable, type Writable } from "svelte/store";
 import { apiGetIndex, apiLoadData, apiParseHeader } from "./api";
 import { url as envUrl } from "./url";
 
@@ -18,8 +18,8 @@ function polledReadable<T>(fn: () => Promise<T>) {
     });
 };
 
-function cancelableLoadingStore(urlStore) {
-    const { subscribe, set, update } = writable<null | number | ArrayBuffer>(null);
+export function cancelableLoadingStore(urlStore: Writable<null | string>, progressStore: Writable<number>) {
+    const { subscribe, set, update } = writable<null | ArrayBuffer>(null);
 
     let controller: AbortController | null = null;
     let contentLen = 0;
@@ -49,7 +49,7 @@ function cancelableLoadingStore(urlStore) {
             buf.set(value, rxLen);
             rxLen += value.length;
 
-            set(rxLen / contentLen);
+            progressStore.set(rxLen / contentLen);
         }
 
         // https://stackoverflow.com/questions/37228285/uint8array-to-arraybuffer
@@ -65,6 +65,7 @@ function cancelableLoadingStore(urlStore) {
 
     function reset() {
         set(null);
+        progressStore.set(0);
         controller = null;
         rxLen = 0;
         contentLen = 0;
@@ -81,27 +82,3 @@ function cancelableLoadingStore(urlStore) {
 
 export const polledRuns = polledReadable(apiGetIndex);
 export const polledRunEntries = derived([polledRuns], ([$polledRuns]) => $polledRuns != null ? Object.entries($polledRuns) : [], []);
-
-export const selectedRun = writable<null | string>(null);
-export const selectedRunData = cancelableLoadingStore(selectedRun);
-
-export const selectedRunHeader = derived(selectedRunData, ($selectedRunData) => {
-    if (!($selectedRunData instanceof ArrayBuffer)) return null;
-    return apiParseHeader($selectedRunData);
-});
-
-export const selectedRunLoadedData = derived([selectedRunData, selectedRunHeader], ([$selectedRunData, $selectedRunHeader]) => {
-    if (!$selectedRunHeader) return null;
-    if (!($selectedRunData instanceof ArrayBuffer)) return null;
-
-    try {
-        console.log("Loading");
-        return apiLoadData($selectedRunData as ArrayBuffer, $selectedRunHeader);
-    } catch (e) {
-        console.warn("ERROR LOADING DATA!");
-        console.error(e);
-        return null;
-    }
-});
-
-export const isLoaded = derived(selectedRunHeader, $s => $s != null);

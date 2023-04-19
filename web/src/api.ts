@@ -83,7 +83,14 @@ function mergeData(dat, newReading) {
     return dat;
 }
 
-export function apiLoadData(buf: ArrayBuffer, head) {
+
+export type tSparseArray = (number | null)[];
+export type tLoadedApiData = tSparseArray | { [key: string]: tLoadedApiData };
+export type tLoadedApiDataContainer = {
+    __TIME: number[],
+    [key: string]: tLoadedApiData
+}
+export function apiLoadData(buf: ArrayBuffer, head): tLoadedApiDataContainer {
     buf = buf.slice(head.size);
 
     // Parse Entries

@@ -1,9 +1,5 @@
 <script lang="ts">
-  import Navbar from "./lib/Navbar.svelte";
-  import Dash from "./lib/Dash.svelte";
-  import FileListModal from "./lib/FileListModal.svelte";
+    import FileSelectPage from "./lib/FileSelectPage.svelte";
 </script>
 
-<FileListModal />
-<Navbar />
-<Dash />
+<FileSelectPage />
