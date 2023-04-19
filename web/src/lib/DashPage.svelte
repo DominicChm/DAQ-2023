@@ -73,7 +73,7 @@
     <Grid gap={[10, 5]} {items} {cols} rowHeight={100} let:item let:dataItem let:movePointerDown>
         <div class="card card-bordered bg-base-200 h-full overflow-hidden">
             <div class="card-body h-full p-0 overflow-hidden">
-                <DashChart {cursorSync} {dataStore} {dataItem} />
+                <DashChart {cursorSync} {dataStore} data={dataItem?.data} />
             </div>
         </div>
     </Grid>
@@ -91,55 +91,5 @@
         padding: 0;
         align-items: center;
     }
-    :global(.autocomplete) {
-        padding: 0 !important;
-    }
 
-    :global(.autocomplete::after) {
-        border-color: hsl(var(--bc)) !important;
-    }
-
-    :global(.autocomplete-list) {
-        border-radius: 1rem;
-        background-color: hsl(var(--b1)) !important;
-        border: none !important;
-        margin-top: 0.5rem;
-        box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow);
-
-
-    }
-    
-    :global(.autocomplete-list-item) {
-        border-color: hsl(var(--bc)) !important;
-        color: inherit !important;
-        font-size: large;
-        font-family: inherit;
-        font-weight: 400;
-        margin: 0 0.5rem;
-        border-radius: var(--rounded-btn, 0.5rem);
-        padding: .75rem !important;
-
-        transition-property: color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform, filter, backdrop-filter,
-            -webkit-backdrop-filter !important;
-        transition-duration: 200ms !important;
-        transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1) !important;
-    }
-
-    :global(.autocomplete-list-item:hover) {
-        background-color: hsl(var(--b2)) !important;
-    }
-
-    :global(.confirmed) {
-        background-color: hsl(var(--p)) !important;
-        color: hsl(var(--pc)) !important;
-    }
-    
-    :global(.confirmed:hover) {
-        background-color: hsl(var(--pf)) !important;
-        color: hsl(var(--pc)) !important;
-    }
-
-    :global(.selected:not(.confirmed, :hover)) {
-        background-color: inherit !important;
-    }
 </style>

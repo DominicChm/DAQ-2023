@@ -1,118 +1,118 @@
 <script lang="ts">
     import { onDestroy, onMount } from "svelte";
-    import type { Readable } from "svelte/store";
-    import uplot from "uplot";
+
     import type { tLoadedApiData, tLoadedApiDataContainer } from "../api";
     import { mapDotNotations } from "../util";
+    import Portal from "svelte-portal";
+    import { PencilSimple } from "phosphor-svelte";
+    import { fade } from "svelte/transition";
+    import Chart from "./Chart.svelte";
+    import type { Readable } from "svelte/store";
+    import AutoComplete from "simple-svelte-autocomplete";
 
     export let dataStore: Readable<tLoadedApiDataContainer>;
-    export let cursorSync: uplot.SyncPubSub;
-    export let dataItem;
+    export let cursorSync: uPlot.SyncPubSub;
+    //export let data = {};
+
+    let legendContainer;
 
     let testDataDef = {
         sources: {
             data1: {
                 color: "red",
+                name: "Custom data1 label",
             },
             data2: {
                 color: "orange",
+                name: "Custom data2 label",
             },
         },
         chartName: "lel",
         chartType: "line",
     };
 
-    function getSeries(sources) {
-        let dataSeries = Object.entries(sources).map(([k, v]: [any, any]) => ({ label: k, stroke: v.color, spanGaps: true }));
-        return [{ label: "x" }, ...dataSeries];
+    let isEditing = true;
+
+    function setEditing(state) {
+        isEditing = state;
     }
 
-    let chartContainer;
-    let legendContainer;
-    let plt = null;
-
-    let clientH, clientW;
-
-    // Updates graph sizes when their container changes
-    $: {
-        plt?.setSize({
-            height: clientH || 100,
-            width: clientW || 100,
-        });
+    function saveEdits() {
+        setEditing(false);
     }
 
-    function getVar(v) {
-        return "hsl(" + getComputedStyle(document.documentElement).getPropertyValue(v) + ")";
+    function cancelEdits() {
+        setEditing(false);
     }
-
-    // https://www.30secondsofcode.org/js/s/lcm/
-    const lcm = (...arr) => {
-        const gcd = (x, y) => (!y ? x : gcd(y, x % y));
-        const _lcm = (x, y) => (x * y) / gcd(x, y);
-        return [...arr].reduce((a, b) => _lcm(a, b));
-    };
-
-    onDestroy(() => {
-        plt?.destroy();
-    });
-
-    onMount(() => {
-        dataStore.subscribe((sources) => {
-            if (plt) plt.destroy();
-
-            if (sources == null) return;
-
-            const data = [sources.__TIME, ...mapDotNotations(sources, Object.keys(testDataDef.sources))];
-
-            const matchSyncKeys = (own, ext) => own == ext;
-            plt = new uplot(
-                {
-                    cursor: {
-                        sync: {
-                            key: cursorSync.key,
-                            setSeries: true,
-                            match: [matchSyncKeys, matchSyncKeys],
-                        },
-                        points: {
-                            size: 7,
-                        },
-                    },
-                    focus: {
-                        alpha: 0.3,
-                    },
-                    width: 300,
-                    height: 300,
-                    scales: { x: { time: false } },
-                    axes: [
-                        {
-                            stroke: getVar("--bc"),
-                            grid: { stroke: getVar("--b1") },
-                        },
-                        {
-                            stroke: getVar("--bc"),
-                            grid: { stroke: getVar("--b1") },
-                        },
-                    ],
-                    legend: {
-                        mount(up, el) {
-                            if (legendContainer) legendContainer.appendChild(el);
-                        },
-                        show: true,
-                    },
-                    series: getSeries(testDataDef.sources),
-                },
-                data,
-                chartContainer
-            );
-            cursorSync.sub(plt);
-        });
-    });
 </script>
 
+<!-- Grid Card Contents-->
 <div class="w-full h-full flex flex-col overflow-hidden">
     <div class="flex justify-between prose w-auto max-w-none max-h-14">
-        <h3 class="bg-neutral block px-3 m-0 py-2 rounded-br-2xl cursor-move select-none" >{testDataDef.chartName}</h3>
+        <div class="flex items-center gap-2 revealer">
+            <h3 class="bg-neutral block px-3 m-0 py-2 rounded-br-2xl cursor-move select-none h-full">{testDataDef.chartName}</h3>
+            <button class="btn btn-ghost btn-sm loc-hidden" on:pointerdown|stopPropagation on:click={() => setEditing(true)}><PencilSimple /></button>
+        </div>
         <div on:pointerdown|stopPropagation bind:this={legendContainer} />
     </div>
-    <div class="flex-1 box-border overflow-hidden" bind:this={chartContainer} bind:clientHeight={clientH} bind:clientWidth={clientW} on:pointerdown|stopPropagation />
+    <Chart {cursorSync} {dataStore} {legendContainer} sources={testDataDef.sources} />
 </div>
+
+<!-- Card Edit Modal -->
+{#if isEditing}
+    <Portal>
+        <div class="modal modal-open" transition:fade={{ duration: 100 }}>
+            <div class="modal-box w-11/12 max-w-full flex flex-col" style="height: 90%;">
+                <h3 class="font-bold text-lg">Edit Chart</h3>
+                <div class="flex-1 flex min-h-0">
+                    <div class="grid w-full grid-rows-[1fr_1fr] lg:grid-rows-none lg:grid-cols-[1fr_25rem] items-stretch">
+                        <Chart {cursorSync} {dataStore} sources={testDataDef.sources} showLegend={false} />
+                        <div class="flex flex-col gap-2">
+                            <div class="flex-1">
+                                <div class="overflow-x-hidden">
+                                    <table class="table" >
+                                        <thead>
+                                            <tr>
+                                              <th></th>
+                                              <th>Data Path</th>
+                                              <th>Job</th>
+                                              <th>Favorite Color</th>
+                                            </tr>
+                                          </thead>
+                                          <tbody>
+                                            <!-- row 1 -->
+                                            <tr>
+                                              <th>1</th>
+                                              <td><AutoComplete items={[1,2,3]}></AutoComplete></td>
+                                              <td>Quality Control Specialist</td>
+                                              <td>Blue</td>
+                                            </tr>
+                                          </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            <div class="inline-block self-end">
+                                <button class="btn" on:click={cancelEdits}>Cancel</button>
+                                <button class="btn btn-primary" on:click={saveEdits}>Save</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </Portal>
+{/if}
+
+<style>
+    .revealer:hover .loc-hidden {
+        opacity: 1;
+    }
+
+    .loc-hidden {
+        opacity: 0;
+    }
+
+    table :global(.autocomplete) {
+        border-color: hsl(var(--b3)) !important;
+    }
+</style>
