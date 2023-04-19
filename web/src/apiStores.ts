@@ -1,5 +1,5 @@
 import { derived, readable, writable, type Writable } from "svelte/store";
-import { apiGetIndex, apiLoadData, apiParseHeader } from "./api";
+import { apiGetIndex, apiLoadData, apiParseHeader, type tLoadedApiDataContainer } from "./api";
 import { url as envUrl } from "./url";
 
 // https://javascript.info/fetch-progress
@@ -18,8 +18,8 @@ function polledReadable<T>(fn: () => Promise<T>) {
     });
 };
 
-export function cancelableLoadingStore(urlStore: Writable<null | string>, progressStore: Writable<number>) {
-    const { subscribe, set, update } = writable<null | ArrayBuffer>(null);
+export function cancelableLoadingStore(urlStore: Writable<null | string>, progressStore: Writable<number>): Writable<tLoadedApiDataContainer> {
+    const { subscribe, set, update } = writable<null | tLoadedApiDataContainer>(null);
 
     let controller: AbortController | null = null;
     let contentLen = 0;
@@ -30,30 +30,39 @@ export function cancelableLoadingStore(urlStore: Writable<null | string>, progre
 
         if (url == null) return;
 
-        controller = new AbortController();
+        try {
+            controller = new AbortController();
 
-        const res = await fetch(envUrl(url), { signal: controller.signal, method: "get" });
-        const reader = res.body.getReader();
+            const res = await fetch(envUrl(url), { signal: controller.signal, method: "get" });
+            const reader = res.body.getReader();
 
-        contentLen = +res.headers.get("Content-Length");
+            contentLen = +res.headers.get("Content-Length");
 
-        const buf = new Uint8Array(contentLen);
+            const buf = new Uint8Array(contentLen);
 
-        while (true) {
-            const { done, value } = await reader.read();
+            while (true) {
+                const { done, value } = await reader.read();
 
-            if (done) {
-                break;
+                if (done) {
+                    break;
+                }
+
+                buf.set(value, rxLen);
+                rxLen += value.length;
+
+                progressStore.set(rxLen / contentLen);
             }
 
-            buf.set(value, rxLen);
-            rxLen += value.length;
+            // https://stackoverflow.com/questions/37228285/uint8array-to-arraybuffer
+            let dataBuf = buf.buffer.slice(buf.byteOffset, buf.byteLength + buf.byteOffset) as ArrayBuffer;
 
-            progressStore.set(rxLen / contentLen);
+            let header = apiParseHeader(dataBuf);
+            let data = apiLoadData(dataBuf, header);
+            set(data);
+        } catch (e) {
+            cancel();
+            progressStore.set(null);
         }
-
-        // https://stackoverflow.com/questions/37228285/uint8array-to-arraybuffer
-        set(buf.buffer.slice(buf.byteOffset, buf.byteLength + buf.byteOffset) as ArrayBuffer);
     }
 
     function cancel() {
@@ -77,6 +86,8 @@ export function cancelableLoadingStore(urlStore: Writable<null | string>, progre
 
     return {
         subscribe,
+        set,
+        update
     };
 }
 

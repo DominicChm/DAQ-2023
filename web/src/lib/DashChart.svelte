@@ -1,11 +1,31 @@
 <script lang="ts">
-    import { onMount } from "svelte";
+    import { onDestroy, onMount } from "svelte";
     import type { Readable } from "svelte/store";
     import uplot from "uplot";
-    import type { tLoadedApiData } from "../api";
+    import type { tLoadedApiData, tLoadedApiDataContainer } from "../api";
+    import { mapDotNotations } from "../util";
 
-    export let dataStore: Readable<tLoadedApiData>;
+    export let dataStore: Readable<tLoadedApiDataContainer>;
     export let cursorSync: uplot.SyncPubSub;
+    export let dataItem;
+
+    let testDataDef = {
+        sources: {
+            data1: {
+                color: "red",
+            },
+            data2: {
+                color: "orange",
+            },
+        },
+        chartName: "lel",
+        chartType: "line",
+    };
+
+    function getSeries(sources) {
+        let dataSeries = Object.entries(sources).map(([k, v]: [any, any]) => ({ label: k, stroke: v.color, spanGaps: true }));
+        return [{ label: "x" }, ...dataSeries];
+    }
 
     let chartContainer;
     let legendContainer;
@@ -32,70 +52,67 @@
         return [...arr].reduce((a, b) => _lcm(a, b));
     };
 
-    dataStore.subscribe((sources) => {
-        if (plt) plt.destroy();
+    onDestroy(() => {
+        plt?.destroy();
+    });
 
-        if (sources == null) return;
-        const data = [sources.__TIME, sources.data0, sources.data3, sources["data1.5"]];
-        const matchSyncKeys = (own, ext) => own == ext;
-        plt = new uplot(
-            {
-                cursor: {
-                    sync: {
-                        key: cursorSync.key,
-                        setSeries: true,
-                        match: [matchSyncKeys, matchSyncKeys],
+    onMount(() => {
+        dataStore.subscribe((sources) => {
+            if (plt) plt.destroy();
+
+            if (sources == null) return;
+
+            const data = [sources.__TIME, ...mapDotNotations(sources, Object.keys(testDataDef.sources))];
+
+            const matchSyncKeys = (own, ext) => own == ext;
+            plt = new uplot(
+                {
+                    cursor: {
+                        sync: {
+                            key: cursorSync.key,
+                            setSeries: true,
+                            match: [matchSyncKeys, matchSyncKeys],
+                        },
+                        points: {
+                            size: 7,
+                        },
                     },
-                    points: {
-                        size: 7,
+                    focus: {
+                        alpha: 0.3,
                     },
+                    width: 300,
+                    height: 300,
+                    scales: { x: { time: false } },
+                    axes: [
+                        {
+                            stroke: getVar("--bc"),
+                            grid: { stroke: getVar("--b1") },
+                        },
+                        {
+                            stroke: getVar("--bc"),
+                            grid: { stroke: getVar("--b1") },
+                        },
+                    ],
+                    legend: {
+                        mount(up, el) {
+                            if (legendContainer) legendContainer.appendChild(el);
+                        },
+                        show: true,
+                    },
+                    series: getSeries(testDataDef.sources),
                 },
-                focus: {
-                    alpha: 0.3,
-                },
-                width: 300,
-                height: 300,
-                scales: { x: { time: false } },
-                axes: [
-                    {
-                        stroke: getVar("--bc"),
-                        grid: { stroke: getVar("--b1") },
-                    },
-                    {
-                        stroke: getVar("--bc"),
-                        grid: { stroke: getVar("--b1") },
-                    },
-                ],
-                legend: {
-                    mount(up, el) {
-                        legendContainer.appendChild(el);
-                    },
-                    show: true,
-                },
-                series: [
-                    { label: "x" },
-                    { label: "data0", stroke: "red", spanGaps: true },
-                    { label: "data3", stroke: "green", spanGaps: true },
-                    { label: "data15", stroke: "orange", spanGaps: true },
-                ],
-            },
-            data,
-            chartContainer
-        );
-        cursorSync.sub(plt);
+                data,
+                chartContainer
+            );
+            cursorSync.sub(plt);
+        });
     });
 </script>
 
 <div class="w-full h-full flex flex-col overflow-hidden">
-    <div class="flex justify-between prose w-auto max-w-none">
-        <h3 class="bg-neutral block px-3 m-0 py-2 rounded-br-xl cursor-move">{"Name, lmao!"}</h3>
+    <div class="flex justify-between prose w-auto max-w-none max-h-14">
+        <h3 class="bg-neutral block px-3 m-0 py-2 rounded-br-2xl cursor-move select-none" >{testDataDef.chartName}</h3>
         <div on:pointerdown|stopPropagation bind:this={legendContainer} />
     </div>
-    <div class="flex-1 box-border overflow-hidden" bind:this={chartContainer} bind:clientHeight={clientH} bind:clientWidth={clientW} on:pointerdown|stopPropagation>
-        {#if !$isLoaded}
-            <div class="absolute left-0 right-0 w-full h-full flex justify-center items-center">
-                <div>No Data</div>
-            </div>
-        {/if}
-    </div>
+    <div class="flex-1 box-border overflow-hidden" bind:this={chartContainer} bind:clientHeight={clientH} bind:clientWidth={clientW} on:pointerdown|stopPropagation />
 </div>
