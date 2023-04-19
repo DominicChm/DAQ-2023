@@ -4,12 +4,15 @@
     import { mapDotNotations } from "../util";
     import { onDestroy, onMount } from "svelte";
     import type { tLoadedApiDataContainer } from "../api";
-
+    import { getVar } from "../util";
+    
     export let showLegend = true;
     export let dataStore: Readable<tLoadedApiDataContainer>;
     export let cursorSync: uPlot.SyncPubSub;
     export let sources;
     export let legendContainer = null;
+
+    export let gridColor = getVar("--b1");
 
     let chartContainer;
     let plt: uPlot | null = null;
@@ -23,9 +26,6 @@
             width: clientW || 100,
         });
     }
-    function getVar(v) {
-        return "hsl(" + getComputedStyle(document.documentElement).getPropertyValue(v) + ")";
-    }
 
     function getSeries(sources) {
         let dataSeries = Object.entries(sources).map(([k, v]: [any, any]) => ({ label: k, stroke: v.color, spanGaps: true }));
@@ -33,10 +33,10 @@
     }
 
     function initPlot(sources, chartContainer, legendContainer, cursorSync) {
-        if (sources == null || chartContainer == null ) return;
+        if (sources == null || chartContainer == null) return;
 
-        if(plt) plt.destroy();
-        if(unsubPlt) unsubPlt();
+        if (plt) plt.destroy();
+        if (unsubPlt) unsubPlt();
 
         let sourceData = get(dataStore);
 
@@ -65,11 +65,11 @@
                 axes: [
                     {
                         stroke: getVar("--bc"),
-                        grid: { stroke: getVar("--b1") },
+                        grid: { stroke: gridColor },
                     },
                     {
                         stroke: getVar("--bc"),
-                        grid: { stroke: getVar("--b1") },
+                        grid: { stroke: gridColor },
                     },
                 ],
                 legend: {
@@ -86,7 +86,7 @@
         cursorSync.sub(plt);
 
         // Update the graph when new data comes in.
-        // Note: DON'T use the incoming data object. The 
+        // Note: DON'T use the incoming data object. The
         // captured one will be updated because it holds
         // references to the data arrays. Just need to make the
         // plot refresh.
@@ -99,7 +99,7 @@
 
     onDestroy(() => {
         plt?.destroy();
-        if(unsubPlt) unsubPlt();
+        if (unsubPlt) unsubPlt();
     });
 </script>
 

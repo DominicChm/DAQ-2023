@@ -6,3 +6,7 @@ export function dotNotationLookup(obj: Object, notation: string) {
 export function mapDotNotations(obj: Object, notations: string[]) {
     return notations.map(n => dotNotationLookup(obj, n));
 }
+
+export function getVar(v) {
+    return "hsl(" + getComputedStyle(document.documentElement).getPropertyValue(v) + ")";
+}
