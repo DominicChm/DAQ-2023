@@ -15,6 +15,17 @@ export interface I__INDEX {
     }
 }
 
+export type tChartDefinition = {
+    chartName: string,
+    chartType: string,
+    sources: {
+        [key: string]: {
+            color: string,
+            name: string
+        }
+    }
+}
+
 export async function apiGetIndex(): Promise<I__INDEX> {
     console.log(`FETCH: ${url("/__INDEX")}`);
     const res = await fetch(url("/__INDEX"));
