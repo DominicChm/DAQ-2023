@@ -5,8 +5,8 @@
 #include <run_format.h>
 
 #define INDEX_FILE_PATH "/__INDEX"
-#define BLOCK_SIZE 64
-#define NUM_BLOCKS 3
+#define BLOCK_SIZE 512
+#define NUM_BLOCKS 10
 #define BLOCK_OVERHEAD 512
 // #define DONT_WRITE_HEADER
 
@@ -30,9 +30,11 @@ class RunManager {
     struct block_t {
         SemaphoreHandle_t mutex;
         size_t data_size;
+        uint32_t cycles_stored;
         uint8_t data[BLOCK_SIZE + BLOCK_OVERHEAD];
     } _blocks[NUM_BLOCKS];
 
+    uint32_t total_cycles_stored = 0;
     header_t header = {0};
 
    public:
@@ -42,6 +44,13 @@ class RunManager {
                                                                                            _cycle_time_base_ms(base_cycle_interval_ms),
                                                                                            sd_mutex(xSemaphoreCreateMutex()) {
         init_blocks();
+    }
+
+    void update_header_entries() {
+        // Set up header sources
+        header.num_entries = NUM_SOURCES;
+        for (int i = 0; i < NUM_SOURCES; i++)
+            header.entries[i] = _data_sources[i].header_entry();
     }
 
     void update_header() {
@@ -62,10 +71,14 @@ class RunManager {
 
         header.checksum_intermediate = hash((uint8_t *)&header, offsetof(header_t, checksum_intermediate));
 
-        // Set up header sources
-        header.num_entries = NUM_SOURCES;
-        for (int i = 0; i < NUM_SOURCES; i++)
-            header.entries[i] = _data_sources[i].header_entry();
+        update_header_entries();
+
+        write_current_entries();
+    }
+
+    bool set_time_base(uint32_t time_base) {
+        if(_run_is_active) return;
+        _cycle_time_base_ms = max(time_base, 1ul);
     }
 
     bool init_run() {
@@ -80,6 +93,8 @@ class RunManager {
         for (int i = 0; i < NUM_SOURCES; i++)
             _data_sources[i].reset_base_interval(_cycle_time_base_ms);
 
+        total_cycles_stored = 0;
+
         return true;
     }
 
@@ -91,6 +106,7 @@ class RunManager {
 
         _active_run_file = create_run_file();
 
+        Serial.printf("Starting logging with a cycle time-base of %dms\n", _cycle_time_base_ms);
         update_header();
         Serial.println("Generated new header");
 
@@ -141,6 +157,8 @@ class RunManager {
             vTaskDelete(_sampler_task);
             vTaskDelete(_writer_task);
 
+            _active_run_file.seek(offsetof(header_t, num_cycles));
+            _active_run_file.write(total_cycles_stored);
             _active_run_file.close();
 
             // Clear blocks
@@ -155,6 +173,7 @@ class RunManager {
         for (size_t i = 0; i < NUM_BLOCKS; i++) {
             _blocks[i].mutex = xSemaphoreCreateMutex();
             _blocks[i].data_size = 0;
+            _blocks[i].cycles_stored = 0;
         }
     }
 
@@ -220,6 +239,7 @@ class RunManager {
                 for (int i = 0; i < NUM_SOURCES; i++) {
                     current_block->data_size += self->_data_sources[i].cycle(&(current_block->data)[current_block->data_size]);
                 }
+                current_block->cycles_stored++;
                 vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(self->_cycle_time_base_ms));
                 // Serial.println(current_block->data_size);
             }
@@ -253,9 +273,12 @@ class RunManager {
 
             // Take the SD mutex to gain exclusive rights to write to the SD card.
             xSemaphoreTake(self->sd_mutex, portMAX_DELAY);
+            self->total_cycles_stored += current_block->cycles_stored;
 
+            // reset the block.
             self->_active_run_file.write(current_block->data, current_block->data_size);
             current_block->data_size = 0;
+            current_block->cycles_stored = 0;
 
             // Return mutexes to allow other things to access resources.
             xSemaphoreGive(self->sd_mutex);
@@ -267,6 +290,13 @@ class RunManager {
 
     constexpr size_t header_size() {
         return sizeof(header_t);
+    }
+
+    void write_current_entries() {
+        File f = SD_MMC.open("/__ENTRIES", FILE_WRITE);
+        update_header_entries();
+        f.write((uint8_t *)&header.num_entries, sizeof(header.num_entries) + sizeof(header.entries));
+        f.close();
     }
 
     void index_delete() {

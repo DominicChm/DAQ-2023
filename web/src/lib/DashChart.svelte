@@ -57,12 +57,12 @@
 <div class="w-full h-full flex flex-col overflow-hidden">
     <div class="flex justify-between prose w-auto max-w-none max-h-14">
         <div class="flex items-center gap-2 overflow-visible relative">
-            <div class="bg-neutral flex items-center gap-2 px-3 m-0 py-2 rounded-br-2xl cursor-move select-none h-full z-10 revealer">
+            <div class="bg-base-300 flex items-center gap-2 px-3 m-0 py-2 rounded-br-2xl cursor-move select-none h-full z-10 revealer">
                 <h3 class="m-0 text-neutral-content">{testDataDef.chartName || "Unnamed Chart"}</h3>
                 <CaretRight color="hsl(var(--nc))"/>
             </div>
 
-            <div class="actions bg-neutral flex px-3 m-0 py-2 rounded-br-2xl cursor-move select-none h-full absolute left-0 pl-[100%] w-auto top-0">
+            <div class="actions bg-base-300 flex px-3 m-0 py-2 rounded-br-2xl cursor-move select-none h-full absolute left-0 pl-[100%] w-auto top-0">
                 <button class="btn btn-ghost btn-sm loc-hidden" on:pointerdown|stopPropagation on:click={() => setEditing(true)}><PencilSimple size={24} color="hsl(var(--nc))"/></button>
                 <button class="btn btn-ghost btn-sm loc-hidden" on:pointerdown|stopPropagation on:click={() => setZooming(true)}><MagnifyingGlass size={24} color="hsl(var(--nc))"/></button>
             </div>

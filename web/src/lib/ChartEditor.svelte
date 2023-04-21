@@ -1,29 +1,29 @@
 <script lang="ts">
-    import { createEventDispatcher, onDestroy, onMount } from "svelte";
+    import { createEventDispatcher } from "svelte";
 
-    import type { tChartDefinition, tLoadedApiData, tLoadedApiDataContainer } from "../api";
-    import { getVar, mapDotNotations } from "../util";
-    import Portal from "svelte-portal";
-    import { MagnifyingGlass, PencilSimple, Plus, TrashSimple } from "phosphor-svelte";
-    import { fade } from "svelte/transition";
-    import Chart from "./Chart.svelte";
-    import type { Readable } from "svelte/store";
+    import { Plus, TrashSimple } from "phosphor-svelte";
     import AutoComplete from "simple-svelte-autocomplete";
-    import ChartEditor from "./ChartEditor.svelte";
+    import Portal from "svelte-portal";
+    import type { Readable } from "svelte/store";
+    import { fade } from "svelte/transition";
+    import type { tChartDefinition, tLoadedApiDataContainer } from "../api";
+    import { getVar } from "../util";
+    import Chart from "./Chart.svelte";
 
-    // @ts-ignore
     export let dataStore: Readable<tLoadedApiDataContainer>;
     export let cursorSync: uPlot.SyncPubSub;
     export let definition: tChartDefinition;
 
     let localDefinition: tChartDefinition = JSON.parse(JSON.stringify(definition));
     $: sourceEntries = Object.entries(localDefinition.sources);
-    $: storeKeys = Object.keys($dataStore).filter(k => !sourceEntries.find(([k2, _]) => k2 == k) && k != "__TIME");
+    $: allStoreKeys = Object.keys($dataStore);
+    $: unselectedStoreKeys = Object.keys($dataStore).filter(k => !sourceEntries.find(([k2, _]) => k2 == k) && k != "__TIME");
 
+$: console.log(unselectedStoreKeys)
     const dispatch = createEventDispatcher();
 
     function addEntry() {
-        sourceEntries = [...sourceEntries, [storeKeys[0], { color: "#000", name: "new" }]];
+        sourceEntries = [...sourceEntries, [unselectedStoreKeys[0], { color: "#000", name: "new" }]];
     }
 
     function delEntry(entryName: string) {
@@ -80,7 +80,7 @@
                                                 <th class="px-0">
                                                     <button class="btn btn-ghost h-full" on:click={() => delEntry(src)}><TrashSimple size={16} /></button>
                                                 </th>
-                                                <td><AutoComplete items={storeKeys} bind:selectedItem={src} /></td>
+                                                <td class:autocomplete-error={!allStoreKeys.includes(src)} class="autocomplete-error"><AutoComplete items={unselectedStoreKeys} bind:selectedItem={src} /></td>
                                                 <td><input type="color" class="color-input" bind:value={srcopts.color} /></td>
                                             </tr>
                                         {/each}
@@ -134,6 +134,10 @@
         width: 100%;
         box-sizing: border-box;
         position: relative;
+    }
+
+    .autocomplete-error :global(.autocomplete-input) {
+        color: hsl(var(--er)) !important;
     }
 
     /* .color-input::-moz-color-swatch {

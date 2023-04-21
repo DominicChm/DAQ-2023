@@ -20,6 +20,7 @@ template <size_t NUM_SOURCES>
 struct run_header_t {
     uint32_t header_version;                 // Characteristic verion of header.
     uint32_t cycle_time_base_ms;             // Time base of the run.
+    uint32_t num_cycles;                     // Number of cycles contained in this run.
     uint32_t start_time_epoch;               // Start time of the run.
     run_location_t location;                 // Location where this run was done. Recorded at run start.
     char name[1024];                         // Self-explanatory

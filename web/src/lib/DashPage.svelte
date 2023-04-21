@@ -51,7 +51,7 @@
 </script>
 
 <!-- Header -->
-<div class="navbar shadow-lg bg-neutral text-neutral-content rounded-box m-3 w-auto flex justify-between">
+<div class="navbar shadow-lg bg-base-300 rounded-box m-3 w-auto flex justify-between">
     <!-- <div class="flex-none">
         <button class="btn btn-square btn-ghost">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="inline-block w-6 h-6 stroke-current">

@@ -1,7 +1,13 @@
-import { cStruct, uint8, type CTypeBase, type CType } from "c-type-util";
+import { cStruct, uint8, type CTypeBase, type CType, float, uint16 } from "c-type-util";
 
 export let dataSources = {
-    "unsigned char": uint8
+    "unsigned char": uint8,
+    "sin_waves_t": cStruct({
+        s5: float,
+        s10: float,
+        s1: float,
+    }),
+    "short unsigned int": uint16,
 }
 
 

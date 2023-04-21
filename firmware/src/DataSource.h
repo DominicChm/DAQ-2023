@@ -26,7 +26,7 @@ class DataSource {
     DataSource(uint32_t interval_ms, T &dat, const char (&name)[NAME_LEN]) : _data_size(sizeof(T)), _data_source(&dat) {
         static_assert(NAME_LEN < 32, "Name is too long! Max length is 31 chars");
 
-        _interval_ms = interval_ms;
+        _interval_ms = interval_ms < 1 ? 1 : interval_ms;
         _name = (const char *)&name;
         _type_name = characteristic_type_name<T>();
     }

@@ -1,6 +1,7 @@
 import { cString, cStruct, float, uint32 } from "c-type-util";
 import { url } from "./url";
 import { getSourceType } from "./dataSourceTypes";
+import { data_source_t, header_t } from "./headerTypes";
 
 export interface I__INDEX {
     [key: string]: {
@@ -26,6 +27,8 @@ export type tChartDefinition = {
     }
 }
 
+
+
 export async function apiGetIndex(): Promise<I__INDEX> {
     console.log(`FETCH: ${url("/__INDEX")}`);
     const res = await fetch(url("/__INDEX"));
@@ -34,26 +37,6 @@ export async function apiGetIndex(): Promise<I__INDEX> {
 }
 
 export function apiParseHeader(buf: ArrayBuffer) {
-    const header_t = cStruct({
-        header_version: uint32,
-        cycle_time_base_ms: uint32,
-        start_time_epoch: uint32,
-        run_location: cStruct({
-            longitude: float,
-            latitude: float,
-        }),
-        name: cString(1024),
-        description: cString(4096),
-        checksum_intermediate: uint32,
-        num_entries: uint32,
-    });
-
-    const data_source_t = cStruct({
-        cycle_interval: uint32,
-        name: cString(128),
-        type_name: cString(128),
-    })
-
     let header = header_t.readLE(buf);
 
     let entries = [];
@@ -64,6 +47,10 @@ export function apiParseHeader(buf: ArrayBuffer) {
     let size = header_t.size + data_source_t.size * header.num_entries;
 
     return { ...header, entries, size } as typeof header & { entries: typeof entries, size: number };
+}
+
+export function apiParseLiveData(buf: ArrayBuffer, entries: { cycle_interval: number, name: string, type_name: string }[]) {
+
 }
 
 function setupData(reference) {

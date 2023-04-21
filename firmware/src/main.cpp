@@ -19,7 +19,12 @@ void set_timebase(UI &ui) {
 
     if (ui.parse_error()) return;
 
-    ui.printfn("T base %d", tbase);
+    if (rm.set_time_base(tbase)) {
+        ui.printfn("T base %d", tbase);
+
+    } else {
+        ui.printfn("Failed to set. Is a run ongoing?");
+    }
 }
 
 void debug(UI &ui) {
@@ -54,4 +59,13 @@ void setup() {
 
 void loop() {
     ui.poll();
+
+    // Generate some fun random data.
+    sin_waves = {
+        (float)sin(2. * M_PI * millis() / 5000) * 50 - 10,
+        (float)sin(2. * M_PI * millis() / 10000) * 10,
+        (float)sin(2. * M_PI * millis() / 1000) * 120 + 10};
+    d_random = random(1337);
+
+    delay(10);
 }

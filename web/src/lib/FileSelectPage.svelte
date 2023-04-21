@@ -9,7 +9,7 @@
     let urlStore = writable(null);
 
     let fileDataStore = cancelableLoadingStore(urlStore, progress);
-    $: console.log($fileDataStore);
+
     function onOpened({ detail }) {
         urlStore.set(detail);
     }
@@ -38,7 +38,7 @@
 weird switchover behavior -->
 {#if $urlStore && !$fileDataStore}
     <!-- Loading Modal -->
-    <div class="modal modal-bottom sm:modal-middle modal-open" transition:fade>
+    <div class="modal modal-bottom sm:modal-middle modal-open" transition:fade={{duration: 200}}>
         <div class="modal-box prose">
             <h3 class="font-bold text-lg">Loading "{$polledRuns?.[$urlStore]?.name ?? ""}"</h3>
             <div class="flex flex-col justify-center items-center pt-8">
@@ -48,7 +48,7 @@ weird switchover behavior -->
             {#if $progress != null}
                 <p>This might take a little, depending on the size of the run file...</p>
             {:else}
-                <p>There was a problem with the download.</p>
+                <p>There was a problem with the download. Blame Andrew.</p>
             {/if}
             <div class="modal-action">
                 {#if $progress == null}

@@ -64,6 +64,7 @@ export function cancelableLoadingStore(urlStore: Writable<null | string>, progre
             set(dotNotationData);
         } catch (e) {
             cancel();
+            console.error(e);
             progressStore.set(null);
         }
     }
