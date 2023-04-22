@@ -1,5 +1,5 @@
-import { derived, readable, writable, type Writable } from "svelte/store";
-import { apiGetIndex, apiLoadData, apiParseHeader, type tLoadedApiDataContainer } from "./api";
+import { derived, get, readable, writable, type Writable } from "svelte/store";
+import { apiGetIndex, apiGetLive, apiGetSources, apiParseDataFile, apiParseHeader, apiParseLiveData, setupDataContainer, type tLoadedApiDataContainer } from "./api";
 import { url as envUrl } from "./url";
 import dot from "dot-object"
 
@@ -19,80 +19,70 @@ function polledReadable<T>(fn: () => Promise<T>) {
     });
 };
 
-export function cancelableLoadingStore(urlStore: Writable<null | string>, progressStore: Writable<number>): Writable<tLoadedApiDataContainer> {
-    const { subscribe, set, update } = writable<null | tLoadedApiDataContainer>(null);
-
-    let controller: AbortController | null = null;
+export async function load(url: string, progress: Writable<number>, abortController: AbortController): Promise<ArrayBuffer> {
     let contentLen = 0;
     let rxLen = 0;
 
-    async function load(url: string) {
-        cancel();
+    if (url == null) return;
 
-        if (url == null) return;
+    progress.set(0);
+    const res = await fetch(envUrl(url), { signal: abortController.signal, method: "get" });
+    const reader = res.body.getReader();
 
-        try {
-            controller = new AbortController();
+    contentLen = +res.headers.get("Content-Length");
 
-            const res = await fetch(envUrl(url), { signal: controller.signal, method: "get" });
-            const reader = res.body.getReader();
+    const buf = new Uint8Array(contentLen);
 
-            contentLen = +res.headers.get("Content-Length");
+    while (true) {
+        const { done, value } = await reader.read();
 
-            const buf = new Uint8Array(contentLen);
-
-            while (true) {
-                const { done, value } = await reader.read();
-
-                if (done) {
-                    break;
-                }
-
-                buf.set(value, rxLen);
-                rxLen += value.length;
-
-                progressStore.set(rxLen / contentLen);
-            }
-
-            // https://stackoverflow.com/questions/37228285/uint8array-to-arraybuffer
-            let dataBuf = buf.buffer.slice(buf.byteOffset, buf.byteLength + buf.byteOffset) as ArrayBuffer;
-
-            let header = apiParseHeader(dataBuf);
-            let data = apiLoadData(dataBuf, header);
-            dot.keepArray = true;
-            let dotNotationData = dot.dot(data);
-            set(dotNotationData);
-        } catch (e) {
-            cancel();
-            console.error(e);
-            progressStore.set(null);
+        if (done) {
+            break;
         }
+
+        buf.set(value, rxLen);
+        rxLen += value.length;
+
+        progress.set(rxLen / contentLen);
     }
 
-    function cancel() {
-        if (controller)
-            controller.abort();
+    // https://stackoverflow.com/questions/37228285/uint8array-to-arraybuffer
+    return buf.buffer.slice(buf.byteOffset, buf.byteLength + buf.byteOffset) as ArrayBuffer
+}
 
-        reset();
+export async function runDataStore(urlStore: Writable<string | null>, progressStore: Writable<number>, ac: AbortController): Promise<Writable<tLoadedApiDataContainer> | null> {
+    let url = get(urlStore);
+    if (url == null) return null;
+
+    if (url == "/__LIVE") {
+        let sources = await apiGetSources();
+        let dataContainer = writable(setupDataContainer(sources, 0));
+
+
+        async function poll() {
+            let liveData = await apiGetLive(sources);
+            console.log(liveData);
+            dataContainer.update(d => {
+                apiParseLiveData(liveData, sources, d);
+                console.log(d);
+                return d;
+            });
+            tout = setTimeout(poll, 1000);
+        }
+
+        let tout = setTimeout(poll, 1000);
+        urlStore.subscribe(u => u == null ? clearTimeout(tout) : null);
+
+        return dataContainer;
+    } else {
+        let rawDat = await load(url, progressStore, ac);
+        console.log(rawDat)
+        let header = apiParseHeader(rawDat);
+        let parsedData = apiParseDataFile(rawDat, header);
+
+        return writable(parsedData);
     }
 
-    function reset() {
-        set(null);
-        progressStore.set(0);
-        controller = null;
-        rxLen = 0;
-        contentLen = 0;
-    }
-
-    urlStore.subscribe(url => {
-        load(url)
-    });
-
-    return {
-        subscribe,
-        set,
-        update
-    };
 }
 
 export const polledRuns = polledReadable(apiGetIndex);

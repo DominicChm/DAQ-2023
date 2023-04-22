@@ -12,9 +12,9 @@ export const header_t = cStruct({
     name: cString(1024),
     description: cString(4096),
     checksum_intermediate: uint32,
-    num_entries: uint32,
 });
 
+export const t_num_sources = uint32;
 export const data_source_t = cStruct({
     cycle_interval: uint32,
     name: cString(128),
