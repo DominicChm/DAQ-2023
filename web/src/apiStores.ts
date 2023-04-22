@@ -64,13 +64,19 @@ export async function runDataStore(urlStore: Writable<string | null>, progressSt
             console.log(liveData);
             dataContainer.update(d => {
                 apiParseLiveData(liveData, sources, d);
+
+                for (let k in d) {
+                    if (d[k].length > 50) {
+                        d[k].shift()
+                    }
+                }
                 console.log(d);
                 return d;
             });
-            tout = setTimeout(poll, 1000);
+            tout = setTimeout(poll, 500);
         }
 
-        let tout = setTimeout(poll, 1000);
+        let tout = setTimeout(poll, 500);
         urlStore.subscribe(u => u == null ? clearTimeout(tout) : null);
 
         return dataContainer;
