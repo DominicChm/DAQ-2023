@@ -1,21 +1,24 @@
 import { derived, get, readable, writable, type Writable } from "svelte/store";
 import { apiGetIndex, apiGetLive, apiGetSources, apiParseDataFile, apiParseHeader, apiParseLiveData, setupDataContainer, type tLoadedApiDataContainer } from "./api";
 import { url as envUrl } from "./url";
-import dot from "dot-object"
 
 // https://javascript.info/fetch-progress
 // https://javascript.info/fetch-abort#:~:text=To%20be%20able%20to%20cancel,how%20to%20work%20with%20AbortController%20.
 
-const POLL_INTERVAL = 1000;
-function polledReadable<T>(fn: () => Promise<T>) {
+/**
+ * Returns a readable store, populated with the results of the passed async function.
+ * Used to 
+ * @param fn - The function that produces data to be stored. Probably a function that performs a fetch 
+ */
+function polledReadable<T>(fn: () => Promise<T>, interval = 1000) {
     return readable<null | T>(null, set => {
         const update = async () => set(await fn());
 
         update(); // Perform an immediate update.
 
         // Poll for updates.
-        const interval = setInterval(update, POLL_INTERVAL)
-        return () => clearInterval(interval)
+        const i = setInterval(update, interval)
+        return () => clearInterval(i)
     });
 };
 
