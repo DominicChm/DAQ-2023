@@ -18,7 +18,7 @@ template <size_t NUM_SOURCES>
 class RunManager {
     typedef run_header_t<NUM_SOURCES> header_t;
 
-    DataSource (&_data_sources)[NUM_SOURCES];
+    DataStream (&_data_sources)[NUM_SOURCES];
     const uint32_t _cycle_time_base_ms;
 
     bool _run_is_active;
@@ -40,7 +40,7 @@ class RunManager {
    public:
     SemaphoreHandle_t sd_mutex;
 
-    RunManager(uint32_t base_cycle_interval_ms, DataSource (&data_sources)[NUM_SOURCES]) : _data_sources(data_sources),
+    RunManager(uint32_t base_cycle_interval_ms, DataStream (&data_sources)[NUM_SOURCES]) : _data_sources(data_sources),
                                                                                            _cycle_time_base_ms(base_cycle_interval_ms),
                                                                                            sd_mutex(xSemaphoreCreateMutex()) {
         init_blocks();

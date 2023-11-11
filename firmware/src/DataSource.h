@@ -3,7 +3,7 @@
 #include <run_format.h>
 #include <util.h>
 
-class DataSource {
+class DataStream {
     const void *_data_source;
 
     const char *_name;
@@ -23,7 +23,7 @@ class DataSource {
      * this value will be recorded every 10 * 10 = 100ms
      */
     template <typename T, size_t NAME_LEN>
-    DataSource(uint32_t interval_ms, T &dat, const char (&name)[NAME_LEN]) : _data_size(sizeof(T)), _data_source(&dat) {
+    DataStream(uint32_t interval_ms, T &dat, const char (&name)[NAME_LEN]) : _data_size(sizeof(T)), _data_source(&dat) {
         static_assert(NAME_LEN < 32, "Name is too long! Max length is 31 chars");
 
         _interval_ms = interval_ms < 1 ? 1 : interval_ms;
@@ -51,8 +51,8 @@ class DataSource {
         return _type_name;
     }
 
-    run_data_source_t header_entry() {
-        run_data_source_t e = {0};
+    stream_header_t header_entry() {
+        stream_header_t e = {0};
         e.cycle_interval = _cycle_interval;
 
         strlcpy(e.name, _name, sizeof(e.name));

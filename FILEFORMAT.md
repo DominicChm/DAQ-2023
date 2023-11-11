@@ -1,72 +1,73 @@
-This document describes the format used in DILF (.dlf) files
+This document describes the format used in Dom's Logging Format (.dlf) files
 
 # Overview
-DILF files are designed to store constant-rate, constant-size temporal data with high efficiency and deterministic positioning.
+DLF files are designed to store constant-rate, constant-size temporal data with high efficiency and deterministic positioning.
 Benefits include zero overhead beyond an initial header, deterministic the byte offsets, and 
-Additionally, because DILF stores raw binary values, it requires little processing power to encode.
-This makes DILF files ideal for high-rate DAQ (Data AQuisition) applications, especially where storage, RAM, or CPU is at a relative premium (such as in embedded systems or web browsers).  
+Additionally, because DLF stores raw binary values, it requires little processing power to encode.
+This makes DLF files ideal for high-rate DAQ (Data AQuisition) applications, especially where storage, RAM, or CPU is at a premium (such as in embedded systems or web browsers).  
 
-What this all means, practically, is that DILF files can store data from sensors that are readable at drastically different rates (IE accelerometer@1000hz and GPS@10hz) without wasting space on useless values. Additionally, because byte positions are deterministic and calculable, values at specific times can be precisely extracted from the overall datastream without needing to access or seek the entire file. 
+What this all means, practically, is that DLF files can store data streams from sensors that are readable at drastically different rates (IE accelerometer@1000hz and GPS@10hz) without wasting space on useless values. Additionally, because byte positions are deterministic and calculable, values at specific times can be precisely extracted from the overall datastream without needing to access or seek the rest of the file. 
 
-DILF is based on ticks. Each DILF file contains a "time base" which defines the time interval between ticks, in microseconds. A time base of 1000, for example, would translate to a sample rate of 1kHz. Data can be recorded from any arbitrary fixed-size data source at any fixed multiple of ticks. For example, with the aforementioned time base of 1kHz, a GPS might have a collection interval (`tick_interval`) of 100, resulting in collection at 1000Hz / 100 = 10Hz. Collections can happen up to once per tick. Increasing sample rate beyond 1/tick requires the time base to decrease accordingly.
+DLF is based on ticks. Each DLF file contains a "time base" which defines the time interval between ticks, in microseconds. A time base of 1000, for example, would translate to a maximum sample rate of 1kHz. Data can be recorded from any arbitrary fixed-size data source at any fixed multiple of ticks. For example, with the aforementioned time base of 1kHz, a GPS might have a collection interval (`tick_interval`) of 100, resulting in collection at 1000Hz / 100 = 10Hz. Collections can happen up to once per tick. Increasing sample rate beyond once per tick requires the time base to decrease.
+
+## Benefits
+- Optimized storage
 
 ## Limitations
 - unpredictable events (such as a button press) must be polled at a predetermined rate.
-- variable-rate or variable-size data is not supported.
+- variable-rate or variable-size data cannot be supported.
 - There is no built-in mechanism to detect or recover corruption. Files are assumed to be perfect.
-- Files cannot be trimmed by chopping data off. They must be reencoded.
+- Files cannot be trimmed by chopping data off. They must be fully reencoded.
 
 # Structure
-Each DILF file consists of two sections: header and data. The header is variable-length and spans from the start of the file to the data section. The data section spans from the end of the header to the end of the file.
+Each DLF file consists of two sections: header and data. The header is variable-length and spans from the start of the file to the data section. The data section spans from the end of the header to the end of the file.
 
 ## Header
-The header defines metadata about the run, as well as the data types present in the DILF file.
-All header strings are variable-length and null terminated. While this makes loading headers slightly more complex, it allows for arbitrary-length descriptions and notes without reserving a large amount of space for those fields.
-The header structure, in pseudo-code, is as follows
+The header defines metadata about the run as well as the data types present in the DLF data section.
+All header strings are **fixed-length and null terminated**. While this makes loading headers slightly more complex, it allows for arbitrary-length descriptions and notes without reserving a large amount of space for those fields.
+The header structure is as follows
 ```c
+struct dlf_header_t {
+    uint32_t magic = 0x8414; //IDs DLF files. Also allows auto-detection of LSB/MSB encoding.
+    uint32_t tick_base_us;   // Base time interval, in us. Limits how fast samples will be stored.
 
-struct header_t {
-    uint32 magic = 0x8414; //IDs DILF files. Also allows auto-detection of LSB/MSB encoding.
-    uint32 application;    // An arbitrary application-specific identifier. Used to select a metadata parser.  
-    uint32 tick_base_us;   // Base time interval, in us. Limits how fast samples will be stored.
+    uint32_t application;                 // An arbitrary application-specific identifier. Used to select a metadata parser.  
+    uint32_t meta_size = sizeof(meta_t);  // Metadata size stored in case there is no metadata parser available
+    meta_t meta;                        // Metadata. Can be application-specific
+    uint16_t meta_checksum; // Checksum over metadata.
 
-
-    uint32 meta_size = sizeof(meta_t); // Metadata size stored in case there is no metadata parser available
-    meta_t meta;                       // Metadata. Can be application-specific
-    
-
-    uint32 num_source_defs;
+    uint32_t num_source_defs;
     type_header_t source_defs[num_source_defs];
 }
 
-// Defines a data source present in this DILF file
-struct source_header_t {
-    string data_type; // Data type identifier. SEE [TODO]
-    uint32 tick_interval;
-    uint32 tick_phase;
+// Defines a data stream present in this DLF file.
+struct dlf_stream_header_t {
+    char data_type[128]; // Data type identifier. SEE [TODO]
+    uint32_t tick_interval;
+    uint32_t tick_phase;
     
-    string id; // Unique identifier.
-    string notes;  
+    char id[128]; // Unique identifier for this stream
+    char notes[256];  
 };
 
 // Note: Metadata is application-specific, and should vary according to needs.
+// This is an example implementation
 struct meta_t {
-    string title;
-    string description;
-    string notes; // General notes/analysis about the run
+    char title[1024];
+    char description[4096];
     struct {
         float32 longitude;
         float32 latitude;
     } location;
-    string location_desc;
-    uint32 time;
+    char location_desc[256];
+    uint64_t time;              // Epoch of this run's start
 }
 ```
 ### Data Type Identifier
 The structure of binary data is not stored with the data itself. Structures/parsers must be defined and stored externally.
 The data type identifier is a short string which allows parsers to link to the appropriate type definition.
 This can simply be the string "float" or "uint32" for simple types, or the name of a struct for more complex types.  
-This field can be autogenerated by the compiler using MVSC or GCC macros (using a function and the `__PRETTY_PRINT__` macro)0  to extract type names to avoid needing to manually specify type strings.
+This field can be autogenerated by the compiler using MVSC or GCC macros (using a function and the `__PRETTY_PRINT__` macro) to extract type names to avoid needing to manually specify type strings.
 
 ## Data
-Data is stored as closely packed
+Data is packed

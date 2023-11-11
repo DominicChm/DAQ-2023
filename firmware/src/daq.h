@@ -15,8 +15,8 @@ struct sin_waves_t {
 } sin_waves;
 uint16_t d_random = 3;
 
-typedef DataSource ds;
-DataSource data_sources[] = {
+typedef DataStream ds;
+DataStream data_sources[] = {
     ds(1000, d0, "data0"),
     ds(3000, d1, "data1"),
     ds(0, sin_waves, "sin waves"),

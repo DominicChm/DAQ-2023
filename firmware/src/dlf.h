@@ -4,7 +4,7 @@
 
 #define HEADER_VERSION 0
 
-struct run_data_source_t {
+struct stream_header_t {
     uint32_t cycle_interval;  // ms between each record of this format
     char name[128];
     char type_name[128];
@@ -27,5 +27,5 @@ struct run_header_t {
     char description[4096];                  // Self-explanatory
     uint32_t checksum_intermediate;          // Checksum over the preceding data. Used to check header validity.
     uint32_t num_entries;                    // Number of entries
-    run_data_source_t entries[NUM_SOURCES];  // Formats contained in this file.
+    stream_header_t entries[NUM_SOURCES];  // Formats contained in this file.
 } __attribute__((packed));
