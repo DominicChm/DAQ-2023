@@ -5,9 +5,10 @@
 #include <rom/miniz.h>
 
 // tar decompression lib
+#include <SD_MMC.h>
 #include <cpio.h>
 
-// https://iotespresso.com/create-captive-portal-using-esp32/
+// https://github.com/zhouhan0126/DNSServer---esp32/blob/master/examples/CaptivePortalAdvanced/CaptivePortalAdvanced.ino
 DNSServer dnsServer;
 
 // https://github.com/espressif/arduino-esp32/blob/master/libraries/WebServer/examples/SDWebServer/SDWebServer.ino
@@ -175,12 +176,12 @@ void task_web(void* arg) {
     while (1) {
         dnsServer.processNextRequest();
         server.handleClient();
-        delay(10);
+        vTaskDelay(pdMS_TO_TICKS(5));
     }
 }
 
 bool init() {
-    //Serial.println("Starting WIFI");
+    // Serial.println("Starting WIFI");
 
     WiFi.mode(WIFI_AP);
     WiFi.softAP("bdaq2");

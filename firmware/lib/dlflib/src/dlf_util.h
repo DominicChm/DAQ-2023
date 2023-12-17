@@ -1,5 +1,16 @@
 #pragma once
 #include <Arduino.h>
+
+/**
+ * Halts a task on a critical assertion by putting it into an infinite loop.
+ */
+inline void [[noreturn]] dlf_assert(bool assertion, const char *reason) {
+    while (1) {
+        Serial.printf("ASSERT FAILURE: %s\n", reason);
+        vTaskDelay(pdMS_TO_TICKS(3000));
+    }
+}
+
 // https://stackoverflow.com/a/59522794/16238567
 constexpr unsigned int hash(const char *s, int off = 0) {
     return !s[off] ? 5381 : (hash(s, off + 1) * 33) ^ s[off];
@@ -7,7 +18,7 @@ constexpr unsigned int hash(const char *s, int off = 0) {
 
 unsigned int hash(uint8_t *s, size_t len) {
     unsigned int h = 5381;
-    for(int i = len - 1; i >= 0; i--) {
+    for (int i = len - 1; i >= 0; i--) {
         h = h * 33 ^ s[i];
     }
     return h;

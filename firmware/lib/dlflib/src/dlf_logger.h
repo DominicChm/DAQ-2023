@@ -1,8 +1,8 @@
 #include <Arduino.h>
-#include <CircularBuffer.h>
-#include <DataSource.h>
 #include <SD_MMC.h>
-#include <run_format.h>
+
+#include "dlf_datastream.h"
+#include "dlf_types.h"
 
 #define INDEX_FILE_PATH "/__INDEX"
 #define BLOCK_SIZE 512
@@ -20,8 +20,8 @@ class DLFLogger {
     bool _run_is_active;
     File _active_run_file;
 
-    TaskHandle_t _sampler_task;
-    TaskHandle_t _writer_task;
+    TaskHandle_t _sampler_task;  // Samples memory
+    TaskHandle_t _writer_task;   // Writes sensors to SD
 
     struct block_t {
         SemaphoreHandle_t mutex;
@@ -36,12 +36,13 @@ class DLFLogger {
    public:
     SemaphoreHandle_t sd_mutex;
 
-    DLFLogger(FS fs, uint32_t base_cycle_interval_ms, DataStream (&data_sources)[MAX_NUM_SOURCES]) : _data_sources(data_sources),
-                                                                                           _cycle_time_base_ms(base_cycle_interval_ms),
-                                                                                           sd_mutex(xSemaphoreCreateMutex()) {
+    DLFLogger(FS fs, uint32_t tick_interval_ms, DataStream (&data_sources)[MAX_NUM_SOURCES]) : _data_sources(data_sources),
+                                                                                               _cycle_time_base_ms(tick_interval_ms),
+                                                                                               sd_mutex(xSemaphoreCreateMutex()) {
         init_blocks();
     }
 
+    // Todo: change this, put it into dlf_file
     void update_header_entries() {
         // Set up header sources
         header.num_entries = MAX_NUM_SOURCES;
@@ -53,7 +54,7 @@ class DLFLogger {
         header.header_version = HEADER_VERSION;
         header.cycle_time_base_ms = _cycle_time_base_ms;
 
-        // Metadata
+        // Metadata TODO: change this
         strlcpy(header.name, "New Run", sizeof(header.name));
         strlcpy(header.description, "A random, quirky, yet fun description!!", sizeof(header.description));
 
@@ -73,7 +74,7 @@ class DLFLogger {
     }
 
     bool set_time_base(uint32_t time_base) {
-        if(_run_is_active) return;
+        if (_run_is_active) return;
         _cycle_time_base_ms = max(time_base, 1ul);
     }
 

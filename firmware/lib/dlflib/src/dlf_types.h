@@ -1,16 +1,20 @@
 #pragma once
 #include <Arduino.h>
-#include <util.h>
+
+#include "dlf_util.h"
 
 #define HEADER_VERSION 0
 
-struct dlf_stream_header_t {
+typedef uint32_t dlf_tick_t;
+
+struct dlf_stream_config_t {
     char type_id[32];        // Data type identifier. Identifies type of contained data.
     char id[32];             // Unique identifier for this specific stream
     uint32_t tick_interval;  // Interval on which this stream is collected.
     uint32_t tick_phase;     // Tick offset defining when this stream starts
     char notes[128];         // Anything that needs to be communicated about this data stream.
 };
+
 template <typename META_T, size_t NUM_SOURCE>
 struct dlf_header_t {
     uint32_t magic = 0x8414;  // IDs DLF files. Also allows auto-detection of LSB/MSB encoding.
@@ -21,6 +25,6 @@ struct dlf_header_t {
     meta_t meta;                          // Metadata. Can be application-specific
 
     uint32_t num_streams;
-    dlf_stream_header_t streams[num_streams];
+    dlf_stream_config_t streams[num_streams];
     uint16_t meta_checksum;  // Checksum over metadata.
-}
+};
