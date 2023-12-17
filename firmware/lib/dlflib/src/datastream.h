@@ -61,3 +61,5 @@ class DataStream {
         return e;
     }
 };
+
+typedef DataStream ds;

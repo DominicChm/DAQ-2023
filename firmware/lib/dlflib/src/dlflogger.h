@@ -10,15 +10,11 @@
 #define BLOCK_OVERHEAD 512
 // #define DONT_WRITE_HEADER
 
-// constexpr size_t min_block_size(int off = 0) {
-//     return off < NUM_SOURCES ? _data_sources[off]._data_size + min_block_size(off + 1) : 0;
-// }
+template <typename META_T, size_t MAX_NUM_SOURCES>
+class DLFLogger {
+    typedef run_header_t<MAX_NUM_SOURCES> header_t;
 
-template <size_t NUM_SOURCES>
-class RunManager {
-    typedef run_header_t<NUM_SOURCES> header_t;
-
-    DataStream (&_data_sources)[NUM_SOURCES];
+    DataStream (&_data_sources)[MAX_NUM_SOURCES];
     const uint32_t _cycle_time_base_ms;
 
     bool _run_is_active;
@@ -40,7 +36,7 @@ class RunManager {
    public:
     SemaphoreHandle_t sd_mutex;
 
-    RunManager(uint32_t base_cycle_interval_ms, DataStream (&data_sources)[NUM_SOURCES]) : _data_sources(data_sources),
+    DLFLogger(FS fs, uint32_t base_cycle_interval_ms, DataStream (&data_sources)[MAX_NUM_SOURCES]) : _data_sources(data_sources),
                                                                                            _cycle_time_base_ms(base_cycle_interval_ms),
                                                                                            sd_mutex(xSemaphoreCreateMutex()) {
         init_blocks();
@@ -48,8 +44,8 @@ class RunManager {
 
     void update_header_entries() {
         // Set up header sources
-        header.num_entries = NUM_SOURCES;
-        for (int i = 0; i < NUM_SOURCES; i++)
+        header.num_entries = MAX_NUM_SOURCES;
+        for (int i = 0; i < MAX_NUM_SOURCES; i++)
             header.entries[i] = _data_sources[i].header_entry();
     }
 
@@ -90,7 +86,7 @@ class RunManager {
         Serial.printf("SD Initialized! Size: %lumb\n", SD_MMC.cardSize() / (1llu << 20));
 
         // Set up data sources by setting the cycle time base.
-        for (int i = 0; i < NUM_SOURCES; i++)
+        for (int i = 0; i < MAX_NUM_SOURCES; i++)
             _data_sources[i].reset_base_interval(_cycle_time_base_ms);
 
         total_cycles_stored = 0;
@@ -190,7 +186,7 @@ class RunManager {
         return String(id_buf);
     }
 
-    void index_add_new(String file_name, run_header_t<NUM_SOURCES> &header) {
+    void index_add_new(String file_name, run_header_t<MAX_NUM_SOURCES> &header) {
         File f = SD_MMC.open(INDEX_FILE_PATH, FILE_APPEND);
         if (!f) {
             Serial.println("!! Error opening index file!");
@@ -221,7 +217,7 @@ class RunManager {
      * task.
      */
     static void sampler_task(void *arg) {
-        RunManager *self = (RunManager *)arg;
+        DLFLogger *self = (DLFLogger *)arg;
         TickType_t xLastWakeTime = xTaskGetTickCount();
 
         size_t block_idx = 0;
@@ -236,7 +232,7 @@ class RunManager {
 
             xSemaphoreTake(current_block->mutex, portMAX_DELAY);
             while (current_block->data_size < BLOCK_SIZE) {
-                for (int i = 0; i < NUM_SOURCES; i++) {
+                for (int i = 0; i < MAX_NUM_SOURCES; i++) {
                     current_block->data_size += self->_data_sources[i].cycle(&(current_block->data)[current_block->data_size]);
                 }
                 current_block->cycles_stored++;
@@ -253,7 +249,7 @@ class RunManager {
      * prevents SD accesses from blocking sampling.
      */
     static void writer_task(void *arg) {
-        RunManager *self = (RunManager *)arg;
+        DLFLogger *self = (DLFLogger *)arg;
         TickType_t xLastWakeTime = xTaskGetTickCount();
 
         size_t block_idx = 0;
