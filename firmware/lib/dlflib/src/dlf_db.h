@@ -4,7 +4,7 @@
  * Manages append-only JSONL files for the various JSON endpoints
  *
  * DLFLib JSON files are append-only at runtime to keep performance high.
- * They are structured as one JSON object per file, to take advantage of JS's built-in
+ * They are structured as one overall JSON object per file to take advantage of JS's built-in
  * key deduplication.
  *
  * This allows modification, deletion, and addition operations to be created using appends

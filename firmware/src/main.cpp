@@ -1,8 +1,23 @@
-// #include <Arduino.h>
+#include <Arduino.h>
+#include <dlf_datastream.h>
+#include <dlf_types.h>
+#include <dlf_logger.h>
+#include <chrono>
+#include <SD_MMC.h>
+
+struct tests {
+} d;
+
+DLFLogger logger(SD_MMC, "/logger1");
+
+
+//DLFDataStream st_test(d, std::chrono::milliseconds(10), "test");
+
+
 // // #include <dlf.h>
 
-// typedef DataStream ds;
-// DataStream data_sources[] = {
+// typedef DLFDataStream ds;
+// DLFDataStream data_sources[] = {
 //     ds(1000, d0, "data0"),
 //     ds(3000, d1, "data1"),
 //     ds(0, sin_waves, "sin waves"),
@@ -41,8 +56,6 @@
 // }
 
 void setup() {
-
-
 }
 
 void loop() {

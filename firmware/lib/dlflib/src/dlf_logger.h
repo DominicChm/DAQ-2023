@@ -2,6 +2,7 @@
 #include <SD_MMC.h>
 
 #include "dlf_datastream.h"
+#include "dlf_logfile.h"
 #include "dlf_types.h"
 
 #define INDEX_FILE_PATH "/__INDEX"
@@ -10,72 +11,15 @@
 #define BLOCK_OVERHEAD 512
 // #define DONT_WRITE_HEADER
 
-template <typename META_T, size_t MAX_NUM_SOURCES>
 class DLFLogger {
-    typedef run_header_t<MAX_NUM_SOURCES> header_t;
+    std::vector<DLFLogFile> log_files;
+    std::vector<DLFDataStream> data_streams;
 
-    DataStream (&_data_sources)[MAX_NUM_SOURCES];
-    const uint32_t _cycle_time_base_ms;
-
-    bool _run_is_active;
-    File _active_run_file;
-
-    TaskHandle_t _sampler_task;  // Samples memory
-    TaskHandle_t _writer_task;   // Writes sensors to SD
-
-    struct block_t {
-        SemaphoreHandle_t mutex;
-        size_t data_size;
-        uint32_t cycles_stored;
-        uint8_t data[BLOCK_SIZE + BLOCK_OVERHEAD];
-    } _blocks[NUM_BLOCKS];
-
-    uint32_t total_cycles_stored = 0;
-    header_t header = {0};
+    FS &fs;
+    String fs_dir;
 
    public:
-    SemaphoreHandle_t sd_mutex;
-
-    DLFLogger(FS fs, uint32_t tick_interval_ms, DataStream (&data_sources)[MAX_NUM_SOURCES]) : _data_sources(data_sources),
-                                                                                               _cycle_time_base_ms(tick_interval_ms),
-                                                                                               sd_mutex(xSemaphoreCreateMutex()) {
-        init_blocks();
-    }
-
-    // Todo: change this, put it into dlf_file
-    void update_header_entries() {
-        // Set up header sources
-        header.num_entries = MAX_NUM_SOURCES;
-        for (int i = 0; i < MAX_NUM_SOURCES; i++)
-            header.entries[i] = _data_sources[i].header_entry();
-    }
-
-    void update_header() {
-        header.header_version = HEADER_VERSION;
-        header.cycle_time_base_ms = _cycle_time_base_ms;
-
-        // Metadata TODO: change this
-        strlcpy(header.name, "New Run", sizeof(header.name));
-        strlcpy(header.description, "A random, quirky, yet fun description!!", sizeof(header.description));
-
-        // FIXME: Update these when data available!!
-        // Plan is to use GPS data to provide these.
-        header.start_time_epoch = 0;
-        header.location = run_location_t{
-            .longitude = .6,
-            .latitude = .5,
-        };
-
-        header.checksum_intermediate = hash((uint8_t *)&header, offsetof(header_t, checksum_intermediate));
-
-        update_header_entries();
-
-        write_current_entries();
-    }
-
-    bool set_time_base(uint32_t time_base) {
-        if (_run_is_active) return;
-        _cycle_time_base_ms = max(time_base, 1ul);
+    DLFLogger(FS &fs, String fs_dir = "/"): fs(fs), fs_dir(fs_dir) {
     }
 
     bool init_run() {
@@ -85,10 +29,6 @@ class DLFLogger {
         }
 
         Serial.printf("SD Initialized! Size: %lumb\n", SD_MMC.cardSize() / (1llu << 20));
-
-        // Set up data sources by setting the cycle time base.
-        for (int i = 0; i < MAX_NUM_SOURCES; i++)
-            _data_sources[i].reset_base_interval(_cycle_time_base_ms);
 
         total_cycles_stored = 0;
 
@@ -297,5 +237,10 @@ class DLFLogger {
     }
 
     void index_delete() {
+    }
+
+    template <typename T>
+    DLFDataStream &log(T &dat, std::chrono::duration<dlf_tick_t, std::milli> sample_interval, const char *id, const char *type_id = characteristic_type_name<T>()) {
+        DLFDataStream d;
     }
 };
