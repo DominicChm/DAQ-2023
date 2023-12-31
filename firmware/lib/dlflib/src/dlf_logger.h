@@ -2,7 +2,7 @@
 #include <SD_MMC.h>
 
 #include "dlf_datastream.h"
-#include "dlf_logfile.h"
+#include "dlf_logfile.hpp"
 #include "dlf_types.h"
 
 #define INDEX_FILE_PATH "/__INDEX"
@@ -13,13 +13,13 @@
 
 class DLFLogger {
     std::vector<DLFLogFile> log_files;
-    std::vector<DLFDataStream> data_streams;
+    std::vector<DLFDataStream *> data_streams;
 
     FS &fs;
     String fs_dir;
 
    public:
-    DLFLogger(FS &fs, String fs_dir = "/"): fs(fs), fs_dir(fs_dir) {
+    DLFLogger(FS &fs, String fs_dir = "/") : fs(fs), fs_dir(fs_dir) {
     }
 
     bool init_run() {
@@ -150,79 +150,6 @@ class DLFLogger {
         f.close();
 
         Serial.println("Instantiated index entry!");
-    }
-
-    /**
-     * Samples data at the interval defined by _cycle_time_base_ms,
-     * and writes the data into a block_t to be later handled by the writing
-     * task.
-     */
-    static void sampler_task(void *arg) {
-        DLFLogger *self = (DLFLogger *)arg;
-        TickType_t xLastWakeTime = xTaskGetTickCount();
-
-        size_t block_idx = 0;
-        while (1) {
-            block_t *current_block = &(self->_blocks)[block_idx++];
-            block_idx = block_idx % NUM_BLOCKS;
-
-            if (current_block->data_size != 0) {
-                Serial.println("FATAL ERROR: BLOCK OVERRUN (The sampler's next block's size was not equal to zero!)");
-                vTaskDelay(portMAX_DELAY);  // Effectively stall the task.
-            }
-
-            xSemaphoreTake(current_block->mutex, portMAX_DELAY);
-            while (current_block->data_size < BLOCK_SIZE) {
-                for (int i = 0; i < MAX_NUM_SOURCES; i++) {
-                    current_block->data_size += self->_data_sources[i].cycle(&(current_block->data)[current_block->data_size]);
-                }
-                current_block->cycles_stored++;
-                vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(self->_cycle_time_base_ms));
-                // Serial.println(current_block->data_size);
-            }
-            xSemaphoreGive(current_block->mutex);
-        }
-    }
-
-    /**
-     * Waits for data in a block_t and writes it to disk.
-     * Lower priority than the sampler, which (hopefully)
-     * prevents SD accesses from blocking sampling.
-     */
-    static void writer_task(void *arg) {
-        DLFLogger *self = (DLFLogger *)arg;
-        TickType_t xLastWakeTime = xTaskGetTickCount();
-
-        size_t block_idx = 0;
-        while (1) {
-            // Select a block cyclically. (IE 0 -> 1 -> 2 -> 0 -> 1 ...)
-            block_t *current_block = &(self->_blocks)[block_idx++];
-            block_idx = block_idx % NUM_BLOCKS;
-
-            // Wait on the sampler to return the target block's mutex.
-            // Once this is taken we know that the sampler has
-            // filled the block, ready for writing.
-            xSemaphoreTake(current_block->mutex, portMAX_DELAY);
-            if (current_block->data_size == 0) {
-                Serial.println("FATAL ERROR: ZERO-SIZE BLOCK ENCOUNTERED IN WRITER! (this signifies a desync between the sampler and writer. Maybe the sampler crashed?)");
-                vTaskDelay(portMAX_DELAY);  // Effectively stall the task.
-            }
-
-            // Take the SD mutex to gain exclusive rights to write to the SD card.
-            xSemaphoreTake(self->sd_mutex, portMAX_DELAY);
-            self->total_cycles_stored += current_block->cycles_stored;
-
-            // reset the block.
-            self->_active_run_file.write(current_block->data, current_block->data_size);
-            current_block->data_size = 0;
-            current_block->cycles_stored = 0;
-
-            // Return mutexes to allow other things to access resources.
-            xSemaphoreGive(self->sd_mutex);
-            xSemaphoreGive(current_block->mutex);
-
-            Serial.println("Wrote block!");
-        }
     }
 
     constexpr size_t header_size() {

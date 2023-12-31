@@ -8,23 +8,37 @@
 #include "dlf_types.h"
 #include "dlf_util.h"
 
+using std::chrono::microseconds;
+
+/**
+ * Abstract class representing a source of data as well as some information (name, typeID) about it.
+ */
 class DLFDataStream {
+   protected:
     const size_t _data_size;
     const void *_data_source;
 
-   public:
+    const char *id;
+    const char *type_id;
+
     /**
-     * Constructs a new datasource. Note that the provided name's length is checked at compile time.
-     * !! cycle_interval is in units of the base RunManager frequency. !!
-     * For example, if the Run's base interval is 10ms and interval is 10,
-     * this value will be recorded every 10 * 10 = 100ms
+     * Provides a unified interface for reading from DLFDataStreams
      */
+    class DLFDataStreamHandle {
+       public:
+        virtual size_t encode_into(char *buf, int64_t tick) = 0;
+    };
+    friend class DLFDataStreamHandle;
+
+   public:
     template <typename T>
-    DLFDataStream(T &dat, std::chrono::duration<dlf_tick_t, std::milli> sample_interval, const char *id, const char *type_id = characteristic_type_name<T>())
-        : _data_size(sizeof(T)), _data_source(&dat) {
+    DLFDataStream(T &dat, String id, String type_id = characteristic_type_name<T>()) : _data_size(sizeof(T)), _data_source(&dat) {
         dlf_assert(strlen(id) < sizeof(e.id), "ID too long");
         dlf_assert(strlen(type_id) < sizeof(e.type_id), "Name too long");
     }
 
-    virtual size_t encode_into() = 0;
+    virtual size_t encode_header_into(char *buf) = 0;
+
+    virtual std::unique_ptr<DLFDataStreamHandle> get_handle(microseconds tick_interval);
 };
+

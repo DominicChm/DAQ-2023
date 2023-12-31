@@ -21,8 +21,6 @@ class DLFLogFile {
     dlf_file_err_e error = NONE;
 
     String _uuid;
-    String _polled_data_fname;
-    String _event_data_fname;
 
    public:
     template <typename meta_t, dlf_stream_type_e stream_type>
@@ -34,11 +32,9 @@ class DLFLogFile {
 
         // Create files for tuning and data.
         _uuid = StringUUIDGen();
-        _polled_data_fname = uuid + ".polled.dlf";
-        _event_data_fname = uuid + ".events.dlf";
 
-        _polled_f = run_dir.open(_event_data_fname, "w", true);
-        _event_f = run_dir.open(_polled_data_fname, "w", true);
+        _polled_f = run_dir.open(uuid + ".events.dlf", "w", true);
+        _event_f = run_dir.open(uuid + ".polled.dlf", "w", true);
 
         if (!_polled_f || !_event_f) {
             Serial.printf("Failed to open files\n");
@@ -79,6 +75,10 @@ class DLFLogFile {
         return true;
     }
 
+    void assemble() {
+
+    }
+
     void finalize() {
         // Update header with # of ticks
 
@@ -93,8 +93,6 @@ class DLFLogFile {
     static void task_writer(void *arg) {
         DLFLogFile *self = static_cast<DLFLogFile *>(arg);
         std::vector<uint8_t> *buf;
-
-        self->write_polled_header();
 
         while (self->is_logging && self->error == NONE) {
             // allow RX timeout to poll is_logging flag at a min time.

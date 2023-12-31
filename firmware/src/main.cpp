@@ -10,7 +10,7 @@ struct tests {
 
 DLFLogger logger(SD_MMC, "/logger1");
 
-
+DLFPolledDataStream ds1(d, "test", std::chrono::milliseconds(10));
 //DLFDataStream st_test(d, std::chrono::milliseconds(10), "test");
 
 

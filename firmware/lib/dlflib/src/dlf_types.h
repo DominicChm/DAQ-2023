@@ -7,11 +7,11 @@
 
 #define HEADER_VERSION 0
 
-typedef uint32_t dlf_tick_t;
+typedef uint64_t dlf_tick_t;
 typedef uint32_t dlf_time_us_t;
 
 class DLFDataStream;
-typedef std::vector<DLFDataStream> dlf_streams_t;
+typedef std::vector<DLFDataStream*> dlf_streams_t;
 
 enum dlf_file_err_e : uint8_t {
     NONE,
@@ -40,14 +40,6 @@ struct dlf_polled_stream_header_t : dlf_stream_header_t {
 struct dlf_event_stream_header_t : dlf_stream_header_t {
 };
 
-union dlf_any_stream_header_u {
-    dlf_stream_header_t base;
-    
-    // Extending structs should be selected by type enum
-    dlf_polled_stream_header_t polled;
-    dlf_event_stream_header_t event;
-};
-
 template <typename META_T, size_t NUM_STREAMS>
 struct dlf_header_t {
     uint16_t magic = 0x8414;     // IDs DLF files. Also allows auto-detection of LSB/MSB encoding.
@@ -58,5 +50,5 @@ struct dlf_header_t {
     meta_t meta;                          // Metadata. Can be application-specific
 
     uint16_t num_streams = NUM_STREAMS;
-    dlf_any_stream_header_u streams[NUM_STREAMS];
+    // Next: Array of dlf_polled_stream_header_t OR dlf_event_stream_header_t
 };

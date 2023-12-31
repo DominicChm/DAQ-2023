@@ -15,7 +15,7 @@ To understand the file format, consider my guiding principals for this format:
 In the context of this project, a *data stream* is simply a region of memory that is polled at some interval during logging. More practically, it is probably a struct containing some relevant grouped data. Data streams can be polled at rates that make sense for them, optimizing storage efficiency and performance. For example, accelerometer data can be polled every 10ms while GPS data can be polled ever 1000ms as new solutions are generated. The idea is to only log as fast as a data source can reliably produce data. 
 
 # Time Base
-Every run has a common "*tick time*", which is the minimum interval at which data is polled. Data streams can be polled at any multiple of interval, including at every tick. Sources cannot be polled faster than the tick interval. Additionally, neither the tick interval nor any data stream tick interval can change mid-run. 
+Every run has a common "*tick time*", which is the minimum interval at which data is polled, defined in *microseconds* Data streams can be polled at any multiple of interval, including at every tick. Sources cannot be polled faster than the tick interval. Additionally, neither the tick interval nor any data stream tick interval can change mid-run. 
 
 The tick and interval concept is how the 2023 DAQ is able to store data in a binary stream with 0 overhead and enable seeking. Given the ratio of cycles between two values, it's possible to figure out how many of each will occur, and where in the data stream each value is. Consider the following data values we want to store (`D1`, and `D2`)
 
