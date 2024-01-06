@@ -2,17 +2,23 @@
 
 #include "FS.h"
 #include "dlf_cfg.h"
+#include "dlf_datastream.h"
 #include "dlf_types.h"
 #include "uuid.h"
 
-class DLFLogFile {
+namespace dlf {
+using namespace datastream;
+using namespace std;
+
+class LogFile {
    protected:
     dlf_streams_t _streams;
 
     File _event_f;
-    File _polled_f;
+    File _base_f;
 
-    QueueHandle_t q = xQueueCreate(DLF_QUEUE_SIZE, sizeof(std::vector<uint8_t> *));
+    QueueHandle_t _event_q = xQueueCreate(DLF_QUEUE_SIZE, sizeof(vector<uint8_t> *));
+    QueueHandle_t _polled_q = xQueueCreate(DLF_QUEUE_SIZE, sizeof(vector<uint8_t> *));
 
     TaskHandle_t _sampler_task;  // Samples memory at correct interval
     TaskHandle_t _writer_task;   // Writes sensors to SD
@@ -22,9 +28,12 @@ class DLFLogFile {
 
     String _uuid;
 
+    dlf_tick_t _tick;
+    microseconds _tick_interval;
+
    public:
     template <typename meta_t, dlf_stream_type_e stream_type>
-    DLFLogFile(dlf_streams_t streams, meta_t meta, String &dir, FS &fs) : _streams(streams) {
+    LogFile(dlf_streams_t streams, meta_t meta, String &dir, FS &fs) : _streams(streams) {
         // Open run dir
         fs.mkdir(dir);
         File run_dir = fs.open(dir);
@@ -33,18 +42,31 @@ class DLFLogFile {
         // Create files for tuning and data.
         _uuid = StringUUIDGen();
 
-        _polled_f = run_dir.open(uuid + ".events.dlf", "w", true);
-        _event_f = run_dir.open(uuid + ".polled.dlf", "w", true);
+        _base_f = run_dir.open(uuid + ".dlf", "w", true);
+        _event_f = run_dir.open(uuid + ".events.tmp", "w", true);
 
-        if (!_polled_f || !_event_f) {
+        if (!_base_f || !_event_f) {
             Serial.printf("Failed to open files\n");
             return;
         }
 
-        write_event_header();
-        write_polled_header();
-
         error = NONE;
+    }
+
+    size_t max_stream_size() {
+        size_t ms = 0;
+        for (auto s : _streams)
+            ms = max(ms, s->size());
+
+        return ms;
+    }
+
+    size_t max_block_size() {
+        size_t bs = 0;
+        for (auto const s : _streams)
+            bs += s->size();
+
+        return bs;
     }
 
     String uuid() {
@@ -57,12 +79,7 @@ class DLFLogFile {
 
     virtual bool begin() = 0;
 
-    void write_event_header() {
-        for (auto &stream : _streams) {
-        }
-    }
-
-    void write_polled_header() {
+    void write_header() {
         for (auto &stream : _streams) {
         }
     }
@@ -76,7 +93,6 @@ class DLFLogFile {
     }
 
     void assemble() {
-
     }
 
     void finalize() {
@@ -91,8 +107,7 @@ class DLFLogFile {
      * Samples enabled sources
      */
     static void task_writer(void *arg) {
-        DLFLogFile *self = static_cast<DLFLogFile *>(arg);
-        std::vector<uint8_t> *buf;
+        LogFile *self = static_cast<LogFile *>(arg);
 
         while (self->is_logging && self->error == NONE) {
             // allow RX timeout to poll is_logging flag at a min time.
@@ -113,17 +128,40 @@ class DLFLogFile {
     }
 
     static void task_sampler(void *arg) {
-        DLFLogFile *self = static_cast<DLFLogFile *>(arg);
+        LogFile *self = static_cast<LogFile *>(arg);
 
+        // Init sampling task and streams.
+        self->_tick = 0;
+
+        // Generate handles to data streams
+        vector<unique_ptr<AbstractDataStreamHandle>> handles;
+        for (size_t i = 0, e = self->_streams.size(); i != e; ++i) {
+            AbstractDataStream *s = self->_streams[i];
+            handles.push_back(move(s->handle(self->_tick_interval, i)));
+        }
+
+        // Main logging loop
         while (self->is_logging && self->error == NONE) {
-            std::vector<uint8_t> *buf = new std::vector<uint8_t>(DLF_MIN_BLOCK_SIZE);
-            if (buf == NULL) {
-                Serial.println("OUT OF HEAP MEMORY!");
+            // Allocate a new vec on the heap
+            // to allow later passing through a queue
+            auto buf = new vector<uint8_t>(DLF_MIN_SAMPLE_BUFFER * 2);
+            if (buf == nullptr) {
+                Serial.println("Out of heap mem :(");
                 self->error = HEAP_FULL;
                 break;
             }
 
-            BaseType_t res = xQueueSend(self->q, buf, 0);
+            // Fill data buffer
+            while (buf->size() < DLF_MIN_SAMPLE_BUFFER) {
+                for (auto &h : handles) {
+                    if (h->available(self->_tick))
+                        h->encode_into(*buf, self->_tick);
+                }
+                self->_tick++;
+            }
+
+            // Transfer buffer to writer task through respective queues.
+            BaseType_t res = xQueueSendToBack(self->_polled_q, buf, 0);
             if (res != pdTRUE) {
                 // Data is read faster than the writer could go.
                 Serial.println("No space in sampling queue!");
@@ -132,6 +170,9 @@ class DLFLogFile {
             }
         }
 
+        // Clean up
+
         vTaskDelete(NULL);
     }
 };
+}  // namespace dlf

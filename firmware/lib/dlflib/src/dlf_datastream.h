@@ -10,35 +10,58 @@
 
 using std::chrono::microseconds;
 
+enum DLFStreamType {
+    DLF_UNKNOWN,
+    DLF_EVENT,
+    DLF_POLLED,
+};
+
+namespace dlf::datastream {
 /**
  * Abstract class representing a source of data as well as some information (name, typeID) about it.
  */
-class DLFDataStream {
+class AbstractDataStream {
    protected:
     const size_t _data_size;
     const void *_data_source;
 
-    const char *id;
-    const char *type_id;
+    String *id;
+    String *type_id;
 
-    /**
-     * Provides a unified interface for reading from DLFDataStreams
-     */
-    class DLFDataStreamHandle {
-       public:
-        virtual size_t encode_into(char *buf, int64_t tick) = 0;
-    };
-    friend class DLFDataStreamHandle;
-
-   public:
     template <typename T>
-    DLFDataStream(T &dat, String id, String type_id = characteristic_type_name<T>()) : _data_size(sizeof(T)), _data_source(&dat) {
-        dlf_assert(strlen(id) < sizeof(e.id), "ID too long");
-        dlf_assert(strlen(type_id) < sizeof(e.type_id), "Name too long");
+    AbstractDataStream(T &dat, String id, String type_id = characteristic_type_name<T>()) : _data_size(sizeof(T)), _data_source(&dat) {
+        dlf_assert(id.length() < member_sizeof(dlf_stream_header_t, id), "ID too long");
+        dlf_assert(type_id.length() < member_sizeof(dlf_stream_header_t, type_id), "Type ID too long");
     }
 
-    virtual size_t encode_header_into(char *buf) = 0;
+   public:
+    virtual std::unique_ptr<AbstractDataStreamHandle> handle(microseconds tick_interval, dlf_stream_idx_t idx) = 0;
 
-    virtual std::unique_ptr<DLFDataStreamHandle> get_handle(microseconds tick_interval);
+    virtual size_t size() = 0;
+
+    inline size_t data_size() {
+        return _data_size;
+    }
+
+    inline const void *data_source() {
+        return _data_source;
+    }
 };
 
+class AbstractDataStreamHandle {
+   protected:
+    AbstractDataStream *stream;
+
+    AbstractDataStreamHandle(AbstractDataStream *stream) : stream(stream) {}
+
+   public:
+    virtual bool available(dlf_tick_t tick) = 0;
+
+    virtual void encode_into(std::vector<uint8_t> &buf, dlf_tick_t tick) = 0;
+
+    virtual size_t encode_header_into(std::vector<uint8_t> &buf) = 0;
+};
+
+}  // namespace dlf::datastream
+
+typedef std::vector<dlf::datastream::AbstractDataStream *> dlf_streams_t;

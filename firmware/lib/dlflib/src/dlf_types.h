@@ -9,8 +9,8 @@
 
 typedef uint64_t dlf_tick_t;
 typedef uint32_t dlf_time_us_t;
+typedef uint16_t dlf_stream_idx_t;
 
-class DLFDataStream;
 typedef std::vector<DLFDataStream*> dlf_streams_t;
 
 enum dlf_file_err_e : uint8_t {
@@ -21,6 +21,7 @@ enum dlf_file_err_e : uint8_t {
 };
 
 enum dlf_stream_type_e : uint8_t {
+    UNKNOWN,
     POLLED,
     EVENT
 };
@@ -40,7 +41,7 @@ struct dlf_polled_stream_header_t : dlf_stream_header_t {
 struct dlf_event_stream_header_t : dlf_stream_header_t {
 };
 
-template <typename META_T, size_t NUM_STREAMS>
+template <typename meta_t, size_t NUM_STREAMS>
 struct dlf_header_t {
     uint16_t magic = 0x8414;     // IDs DLF files. Also allows auto-detection of LSB/MSB encoding.
     dlf_time_us_t tick_base_us;  // Base time interval, in us. Limits how fast samples will be stored.

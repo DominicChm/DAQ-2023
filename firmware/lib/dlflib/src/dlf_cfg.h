@@ -6,7 +6,4 @@
  */
 #define DLF_QUEUE_SIZE 64
 
-/**
- * Initial size of buffer allocated for each sample tick
- */
-#define DLF_MIN_BLOCK_SIZE 64
+#define DLF_MIN_SAMPLE_BUFFER 512
