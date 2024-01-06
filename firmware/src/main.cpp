@@ -1,18 +1,21 @@
 #include <Arduino.h>
-#include <dlf_datastream.h>
-#include <dlf_types.h>
-#include <dlf_logger.h>
-#include <chrono>
+#include <dlf_datastream_events.h>
+#include <dlf_datastream_polled.h>
+
+// #include <dlf_types.h>
+// #include <dlf_logger.h>
+// #include <chrono>
 #include <SD_MMC.h>
 
-struct tests {
-} d;
+int polled_int = 0;
+int event_int = 0;
 
-DLFLogger logger(SD_MMC, "/logger1");
+// DLFLogger logger(SD_MMC, "/logger1");
 
-DLFPolledDataStream ds1(d, "test", std::chrono::milliseconds(10));
-//DLFDataStream st_test(d, std::chrono::milliseconds(10), "test");
+DLFPolledDataStream ds1(polled_int, "test", std::chrono::milliseconds(10));
+DLFEventDataStream ds2(event_int, "test2");
 
+// DLFDataStream st_test(d, std::chrono::milliseconds(10), "test");
 
 // // #include <dlf.h>
 
