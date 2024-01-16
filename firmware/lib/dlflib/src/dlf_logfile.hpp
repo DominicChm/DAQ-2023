@@ -1,8 +1,10 @@
 #include <vector>
 
 #include "FS.h"
+#include "datastream/AbstractStreamHandle.hpp"
+#include "datastream/EventStream.hpp"
+#include "datastream/PolledStream.hpp"
 #include "dlf_cfg.h"
-#include "dlf_datastream.h"
 #include "dlf_types.h"
 #include "uuid.h"
 
@@ -10,9 +12,14 @@ namespace dlf {
 using namespace datastream;
 using namespace std;
 
+struct task_stream_sampler_arg_t {
+};
+
 class LogFile {
    protected:
-    dlf_streams_t _streams;
+    streams_t _streams;
+    FS *_fs;
+    String _dir;
 
     File _event_f;
     File _base_f;
@@ -32,25 +39,8 @@ class LogFile {
     microseconds _tick_interval;
 
    public:
-    template <typename meta_t, dlf_stream_type_e stream_type>
-    LogFile(dlf_streams_t streams, meta_t meta, String &dir, FS &fs) : _streams(streams) {
-        // Open run dir
-        fs.mkdir(dir);
-        File run_dir = fs.open(dir);
-        if (!run_dir) return;
-
-        // Create files for tuning and data.
-        _uuid = StringUUIDGen();
-
-        _base_f = run_dir.open(uuid + ".dlf", "w", true);
-        _event_f = run_dir.open(uuid + ".events.tmp", "w", true);
-
-        if (!_base_f || !_event_f) {
-            Serial.printf("Failed to open files\n");
-            return;
-        }
-
-        error = NONE;
+    LogFile(streams_t streams, String dir, FS *fs)
+        : _streams(streams), _fs(fs), _dir(dir) {
     }
 
     size_t max_stream_size() {
@@ -77,14 +67,29 @@ class LogFile {
         return error == NONE;
     }
 
-    virtual bool begin() = 0;
-
     void write_header() {
         for (auto &stream : _streams) {
         }
     }
 
-    bool begin() {
+    template <typename meta_t>
+    bool begin(meta_t meta) {
+        // Open run dir
+        _fs->mkdir(_dir);
+
+        // Create files for tuning and data.
+        _uuid = StringUUIDGen();
+
+        _base_f = _fs->open(_dir + "/" + _uuid + ".dlf", "w", true);
+        _event_f = _fs->open(_dir + "/" + _uuid + ".events.tmp", "w", true);
+
+        if (!_base_f || !_event_f) {
+            Serial.printf("Failed to open files\n");
+            return false;
+        }
+
+        error = NONE;
+
         is_logging = true;
         xTaskCreate(task_writer, "writer", 1024, this, 10, NULL);
         xTaskCreate(task_sampler, "sampler", 1024, this, 20, NULL);
@@ -109,36 +114,42 @@ class LogFile {
     static void task_writer(void *arg) {
         LogFile *self = static_cast<LogFile *>(arg);
 
-        while (self->is_logging && self->error == NONE) {
-            // allow RX timeout to poll is_logging flag at a min time.
-            BaseType_t res = xQueueReceive(self->q, buf, pdMS_TO_TICKS(100));
-            if (res != pdTRUE) continue;
+        // while (self->is_logging && self->error == NONE) {
+        //     // allow RX timeout to poll is_logging flag at a min time.
+        //     BaseType_t res = xQueueReceive(self->q, buf, pdMS_TO_TICKS(100));
+        //     if (res != pdTRUE) continue;
 
-            // Write to SD
-            if (!self->f) break;
-            self->f.write(buf->data(), buf->size());
+        //     // Write to SD
+        //     if (!self->f) break;
+        //     self->f.write(buf->data(), buf->size());
 
-            // Dealloc vector
-            delete buf;
-            buf = NULL;
-        }
+        //     // Dealloc vector
+        //     delete buf;
+        //     buf = NULL;
+        // }
 
         Serial.println("Writer task finished");
         vTaskDelete(NULL);
     }
 
+    /**
+     * FreeRTOS task that samples data for this logfile.
+     *
+     * Data is sampled onto the heap, where pointers are fed into respective data-type queues.
+     *
+     * @param arg A LogFile pointer
+     */
     static void task_sampler(void *arg) {
         LogFile *self = static_cast<LogFile *>(arg);
 
         // Init sampling task and streams.
         self->_tick = 0;
 
-        // Generate handles to data streams
-        vector<unique_ptr<AbstractDataStreamHandle>> handles;
-        for (size_t i = 0, e = self->_streams.size(); i != e; ++i) {
-            AbstractDataStream *s = self->_streams[i];
-            handles.push_back(move(s->handle(self->_tick_interval, i)));
-        }
+        // Generate handles to data streams based on their type
+        // Streams are stored differently so handles must be
+        // handled differently.
+        stream_handles_t polled_handles = create_stream_handles(self->_streams, self->_tick_interval, DLF_POLLED);
+        stream_handles_t event_handles = create_stream_handles(self->_streams, self->_tick_interval, DLF_POLLED);
 
         // Main logging loop
         while (self->is_logging && self->error == NONE) {
@@ -151,9 +162,14 @@ class LogFile {
                 break;
             }
 
-            // Fill data buffer
+            // Fill data buffers
             while (buf->size() < DLF_MIN_SAMPLE_BUFFER) {
-                for (auto &h : handles) {
+                for (auto &h : polled_handles) {
+                    if (h->available(self->_tick))
+                        h->encode_into(*buf, self->_tick);
+                }
+
+                for (auto &h : event_handles) {
                     if (h->available(self->_tick))
                         h->encode_into(*buf, self->_tick);
                 }
@@ -173,6 +189,26 @@ class LogFile {
         // Clean up
 
         vTaskDelete(NULL);
+    }
+
+    /**
+     * @brief Generates a vec of handles to passed data streams, filtered by the templated datastream type.
+     * @tparam T The type of datastream to generate handles for
+     * @param streams A set of all datastreams
+     * @return
+     */
+    static stream_handles_t create_stream_handles(streams_t streams, microseconds tick_interval, DLFStreamType type) {
+        stream_handles_t h;
+
+        for (size_t i = 0, e = streams.size(); i != e; ++i) {
+            AbstractStream *ds = streams[i];
+
+            if (ds->type() == type) {
+                h.push_back(move(ds->handle(tick_interval, i)));
+            }
+        }
+
+        return move(h);
     }
 };
 }  // namespace dlf
