@@ -17,7 +17,7 @@ In the context of this project, a *data stream* is simply a region of memory tha
 # Time Base
 Every run has a common "*tick time*", which is the minimum interval at which data is polled, defined in *microseconds* Data streams can be polled at any multiple of interval, including at every tick. Sources cannot be polled faster than the tick interval. Additionally, neither the tick interval nor any data stream tick interval can change mid-run. 
 
-The tick and interval concept is how the 2023 DAQ is able to store data in a binary stream with 0 overhead and enable seeking. Given the ratio of cycles between two values, it's possible to figure out how many of each will occur, and where in the data stream each value is. Consider the following data values we want to store (`D1`, and `D2`)
+The tick and interval concept is how the 2023 DAQ is able to store data in a binary stream with 0 overhead and enable seeking (in polled data sections). Given the ratio of cycles between two values, it's possible to figure out how many of each will occur, and where in the data stream each value is. Consider the following data values we want to store (`D1`, and `D2`)
 
 ```
 D1: Cycle interval of 1 (every cycle), CI(1)
@@ -39,18 +39,10 @@ Notice that after the initial cycle (where every data source is polled), `D1` oc
 # Format
 ***NOTE: Full format structs can be found in [dlf_types.h](../dlflib/src/dlf_types.h)***
 
-A run file has two major sections: a **polled data** section and an **event data** section. The polled data section comes first, and the event data section comes second. These two sections are similar in that they both store generic binary data, but differ in how they do it. The polled section is optimized for continuously updating data (IE accelerometer, GPS, etc...) while the event data section is optimized for data that updates infrequently (Marker button, remotely tuned parameters, etc...). Each section contains a prepended header. More information is available about this header in each section's respective section.
+A full dataset ("run") consists of multiple files - one metadata file and one file per datastream type. Datasets can be compressed into archives (Likely tar - TBD) for offloading/distribution. Typically, the run will consist of arbitrary **metadata**, a **polled data** file and an **event data** file. These two files are similar in that they both store generic binary data, but differ in how they do it. The polled file format is optimized for continuously updating data (IE accelerometer, GPS, etc...) while the event data format is optimized for data that updates infrequently (Marker button, remotely tuned parameters, etc...). Each section contains a prepended header. More information is available about this header in each section's respective section.
 
 ## Polled Data 
+...TODO
 
 ## Event Data
-
-
-
-
-
-
-# Tuning Files
-The requirements for recording user-specified "tuning" data (For example, controller P, I, D coefficients) differ significantly from those of data recording.
-In particular, these changes are unlikely to happen often enough to justify continuous logging like standard data. Therefore, so-called "tuning" files - which contain all user-defined system parameters - use an event-based format rather than the temporally continuous format of data files. However, the basic structure remains the same.
-
+...TODO
