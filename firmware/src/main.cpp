@@ -1,6 +1,5 @@
 #include <Arduino.h>
-#include <dlf_datastream_events.h>
-#include <dlf_datastream_polled.h>
+#include <dlf_logfile.hpp>
 
 // #include <dlf_types.h>
 // #include <dlf_logger.h>
@@ -12,8 +11,8 @@ int event_int = 0;
 
 // DLFLogger logger(SD_MMC, "/logger1");
 
-DLFPolledDataStream ds1(polled_int, "test", std::chrono::milliseconds(10));
-DLFEventDataStream ds2(event_int, "test2");
+dlf::datastream::PolledStream ds1(polled_int, "test", std::chrono::milliseconds(10));
+dlf::datastream::EventStream ds2(event_int, "test2");
 
 // DLFDataStream st_test(d, std::chrono::milliseconds(10), "test");
 
@@ -58,7 +57,18 @@ DLFEventDataStream ds2(event_int, "test2");
 //     delay(10);
 // }
 
+dlf::LogFile *lf;
+
 void setup() {
+    dlf::datastream::streams_t streams;
+    streams.push_back(&ds1);
+    streams.push_back(&ds2);
+    struct {
+        int test = 1;
+    } meta;
+
+    lf = new dlf::LogFile(streams, "data", &SD_MMC);
+    lf->begin(meta);
 }
 
 void loop() {
