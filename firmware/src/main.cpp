@@ -1,5 +1,5 @@
 #include <Arduino.h>
-#include <dlf_logfile.hpp>
+#include <dlf_run.hpp>
 
 // #include <dlf_types.h>
 // #include <dlf_logger.h>
@@ -67,7 +67,7 @@ void setup() {
         int test = 1;
     } meta;
 
-    lf = new dlf::LogFile(streams, "data", &SD_MMC);
+    lf = new dlf::Run(streams, "data", &SD_MMC);
     lf->begin(meta);
 }
 

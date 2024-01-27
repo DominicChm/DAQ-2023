@@ -7,3 +7,5 @@
 #define DLF_QUEUE_SIZE 64
 
 #define DLF_MIN_SAMPLE_BUFFER 512
+
+#define DLF_FREERTOS_DURATION chrono::duration<TickType_t, ratio<1, configTICK_RATE_HZ>>
