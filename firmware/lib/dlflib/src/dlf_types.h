@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "dlf_util.h"
+#include <vector>
 
 #define HEADER_VERSION 0
 
@@ -12,16 +13,22 @@ typedef uint32_t dlf_time_us_t;
 typedef uint16_t dlf_stream_idx_t;
 
 
-enum dlf_file_err_e : uint8_t {
-    NONE,
-    UNINITIALIZED,
-    QUEUE_FULL,
-    HEAP_FULL,
-    INIT_ERROR,
+struct dlf_sample_queue_entry {
+    File *f;
+    std::vector<uint8_t> *buf;
+};
+
+enum dlf_file_state_e : int8_t {
+    // Errors are (-)
+    QUEUE_FULL=-3,
+    HEAP_FULL=-2,
+    INIT_ERROR=-1,
+
+    UNINITIALIZED = 0,
+    LOGGING=1,
 };
 
 enum dlf_stream_type_e : uint8_t {
-    UNKNOWN,
     POLLED,
     EVENT
 };

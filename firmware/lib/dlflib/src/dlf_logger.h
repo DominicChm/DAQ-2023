@@ -41,18 +41,7 @@ class DLFLogger {
         finish_current_run();
         if (!init_run()) return;
 
-        _active_run_file = create_run_file();
-
         Serial.printf("Starting logging with a cycle time-base of %dms\n", _cycle_time_base_ms);
-        update_header();
-        Serial.println("Generated new header");
-
-#ifndef DONT_WRITE_HEADER
-
-        // TODO: MODIFY INDEX TO CONTAIN SIZE OF FILES AND THEIR APPROX DURATION.
-        write_header();
-        Serial.println("Wrote header");
-#endif
 
         // Update the index with the new header.
         index_add_new(_active_run_file.name(), header);
