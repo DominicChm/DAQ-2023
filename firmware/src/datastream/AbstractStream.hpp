@@ -17,7 +17,7 @@ enum DLFStreamType : uint8_t {
     DLF_EVENT,
 };
 
-const char *stream_type_to_string(DLFStreamType t) {
+inline const char *stream_type_to_string(DLFStreamType t) {
     switch (t) {
         case DLF_POLLED:
             return "polled";
@@ -70,3 +70,4 @@ class AbstractStream {
 typedef std::vector<AbstractStream *> streams_t;
 
 }  // namespace dlf::datastream
+

@@ -46,3 +46,21 @@ A full dataset ("run") consists of multiple files - one metadata file and one fi
 
 ## Event Data
 ...TODO
+
+# Code Structure
+The general ownership structure goes: 
+
+```Logger -> Run -> Logfile[] -> Stream Handles[]```
+
+where each level gets more granular in referencing underlying data. 
+## `Logger`
+The `Logger` class, which all user interaction is performed with, manages one or more `Run` class instances. These are created/closed by functions called by the library user. IE a `Run` is created when a user calls `start_run()` on the `Logger` instance. Users interact with active runs through !!TODO.
+
+## `Run`
+A `Run` instance encapsulates all the necessary machinery to log data during a time interval. This includes selecting a UUID, creating the directory structure where actual data files will reside, creating/managing `LogFile`s, and metering sampling. It is also responsible for cleanup once the user decides to finish a run. 
+
+## `LogFile`
+A `LogFile` instance is responsible for writing `Stream` data to disk. One `LogFile` instance maps to one file within a managed `Run` directory. A `LogFile` instance manages only one type of data (`POLLED` or `EVENT`) due to the different encoding of each type (this separation is handled at construction). `LogFile` instances are NOT responsible for metering data. 
+
+## `Stream Handles`
+Provide an interface to underlying data. They provide metering.

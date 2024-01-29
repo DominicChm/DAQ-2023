@@ -16,9 +16,9 @@ class PolledStreamHandle : public AbstractStreamHandle {
 
     bool available(dlf_tick_t tick);
 
-    size_t encode_header_into(std::vector<uint8_t> &buf);
+    size_t encode_header_into(StreamBufferHandle_t buf);
 
-    void encode_into(std::vector<uint8_t> &buf, dlf_tick_t tick);
+    size_t encode_into(StreamBufferHandle_t buf, dlf_tick_t tick);
 };
 
 }  // namespace dlf::datastream
