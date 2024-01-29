@@ -57,7 +57,7 @@
  */
 
 #include <stdlib.h>
-#include "fnv.h"
+#include <fnv.h>
 
 /*
  * 32 bit magic FNV-0 and FNV-1 prime

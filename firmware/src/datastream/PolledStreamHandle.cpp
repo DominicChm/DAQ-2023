@@ -1,4 +1,4 @@
-#include "PolledStreamHandle.hpp"
+#include <datastream/PolledStreamHandle.hpp>
 
 using namespace dlf::datastream;
 
@@ -10,11 +10,11 @@ bool PolledStreamHandle::available(dlf_tick_t tick) {
     return ((tick + _sample_phase_ticks) % _sample_interval_ticks) != 0;
 }
 
-size_t PolledStreamHandle::encode_header_into(std::vector<uint8_t> &buf) {
+size_t PolledStreamHandle::encode_header_into(StreamBufferHandle_t buf) {
     return 0;
 }
 
-void PolledStreamHandle::encode_into(std::vector<uint8_t> &buf, dlf_tick_t tick) {
+size_t PolledStreamHandle::encode_into(StreamBufferHandle_t buf, dlf_tick_t tick) {
     // Sample data
-    buf.insert(buf.end(), stream->data_source(), stream->data_source() + stream->data_size());
+    return xStreamBufferSend(buf, stream->data_source(), stream->data_size(), 0);
 }

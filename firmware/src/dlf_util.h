@@ -1,4 +1,5 @@
 #pragma once
+
 #include <Arduino.h>
 
 // https://stackoverflow.com/questions/3553296/sizeof-single-struct-member-in-c
@@ -15,11 +16,11 @@
 }
 
 // https://stackoverflow.com/a/59522794/16238567
-constexpr unsigned int hash(const char *s, int off = 0) {
-    return !s[off] ? 5381 : (hash(s, off + 1) * 33) ^ s[off];
+inline constexpr unsigned int hash_str(const char *s, int off = 0) {
+    return !s[off] ? 5381 : (hash_str(s, off + 1) * 33) ^ s[off];
 }
 
-unsigned int hash(uint8_t *s, size_t len) {
+inline unsigned int hash(uint8_t *s, size_t len) {
     unsigned int h = 5381;
     for (int i = len - 1; i >= 0; i--) {
         h = h * 33 ^ s[i];
@@ -28,7 +29,7 @@ unsigned int hash(uint8_t *s, size_t len) {
 }
 
 template <typename T>
-constexpr const char *t() {
+inline constexpr const char *t() {
 #ifdef _MSC_VER
     return __FUNCSIG__;
 #else
@@ -42,7 +43,7 @@ constexpr const char *t() {
  * This string should be parsable to get the actual type's name.
  */
 template <typename T>
-constexpr const char *characteristic_type_name() {
+inline constexpr const char *characteristic_type_name() {
     return t<T>();
 }
 
@@ -50,7 +51,7 @@ constexpr const char *characteristic_type_name() {
  * Copies a string to heap-allocated memory, and sets the passed pointer to said memory.
  * If heap memory already exists at str_dest, it is realloced.
  */
-void str2heap(char **str_dest, const char *str) {
+inline void str2heap(char **str_dest, const char *str) {
     // Make size always at least 1.
     size_t s = str == nullptr ? 1 : strlen(str) + 1;
 

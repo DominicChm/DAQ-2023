@@ -11,7 +11,7 @@ int event_int = 0;
 
 // DLFLogger logger(SD_MMC, "/logger1");
 
-dlf::datastream::PolledStream ds1(polled_int, "test", std::chrono::milliseconds(10));
+dlf::datastream::PolledStream ds1(polled_int, "test", std::chrono::seconds(1));
 dlf::datastream::EventStream ds2(event_int, "test2");
 
 // DLFDataStream st_test(d, std::chrono::milliseconds(10), "test");
@@ -57,7 +57,7 @@ dlf::datastream::EventStream ds2(event_int, "test2");
 //     delay(10);
 // }
 
-dlf::Run *run;
+dlf::Run run(SD_MMC);
 
 void setup() {
     dlf::datastream::streams_t streams;
@@ -67,8 +67,7 @@ void setup() {
         int test = 1;
     } meta;
 
-    run = new dlf::Run(streams, std::chrono::microseconds {10000}, SD_MMC);
-    run->begin(meta);
+    run.begin(streams, std::chrono::microseconds {10000}, meta);
 }
 
 void loop() {

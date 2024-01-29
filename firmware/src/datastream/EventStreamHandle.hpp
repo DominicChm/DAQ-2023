@@ -1,5 +1,6 @@
 #pragma once
 
+
 #include "AbstractStreamHandle.hpp"
 #include "EventStream.hpp"
 
@@ -10,12 +11,14 @@ class EventStreamHandle : public AbstractStreamHandle {
    public:
     EventStreamHandle(EventStream *stream);
 
-    size_t encode_header_into(std::vector<uint8_t> &buf);
 
     inline size_t current_hash();
 
     bool available(dlf_tick_t tick);
 
-    void encode_into(std::vector<uint8_t> &buf, dlf_tick_t tick);
+    size_t encode_header_into(StreamBufferHandle_t buf);
+
+    size_t encode_into(StreamBufferHandle_t buf, dlf_tick_t tick);
 };
 }  // namespace dlf::datastream
+
