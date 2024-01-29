@@ -17,7 +17,7 @@ enum DLFStreamType : uint8_t {
     DLF_EVENT,
 };
 
-const String &stream_type_to_string(DLFStreamType t) {
+const char *stream_type_to_string(DLFStreamType t) {
     switch (t) {
         case DLF_POLLED:
             return "polled";

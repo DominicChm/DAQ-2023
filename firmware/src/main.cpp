@@ -1,6 +1,6 @@
 #include <Arduino.h>
-#include <dlf_run.hpp>
-
+#include <dlf_run.h>
+#include <chrono>
 // #include <dlf_types.h>
 // #include <dlf_logger.h>
 // #include <chrono>
@@ -57,7 +57,7 @@ dlf::datastream::EventStream ds2(event_int, "test2");
 //     delay(10);
 // }
 
-dlf::LogFile *lf;
+dlf::Run *run;
 
 void setup() {
     dlf::datastream::streams_t streams;
@@ -67,8 +67,8 @@ void setup() {
         int test = 1;
     } meta;
 
-    lf = new dlf::Run(streams, "data", &SD_MMC);
-    lf->begin(meta);
+    run = new dlf::Run(streams, std::chrono::microseconds {10000}, SD_MMC);
+    run->begin(meta);
 }
 
 void loop() {
