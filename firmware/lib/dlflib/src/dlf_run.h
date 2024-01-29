@@ -9,6 +9,7 @@
 #include "datastream/AbstractStream.hpp"
 #include "dlf_cfg.h"
 #include "dlf_types.h"
+#include "dlf_logfile.hpp"
 
 namespace dlf {
 using namespace std;
@@ -21,20 +22,30 @@ class Run {
     SemaphoreHandle_t _sync;
     chrono::microseconds tick_interval;
 
+    vector<LogFile> log_files;
+
+public:
     Run(streams_t all_streams, chrono::microseconds tick_interval, FS &fs) : _fs(fs) {
         _uuid = StringUUIDGen();
         _sync = xSemaphoreCreateCounting(2, 2);
+
+        log_files.push_back(LogFile(all_streams, DLF_POLLED, tick_interval, _uuid, fs, _sample_q));
+        log_files.push_back(LogFile(all_streams, DLF_EVENT, tick_interval, _uuid, fs, _sample_q));
+
     }
 
-    bool begin() {
+    template <typename T>
+    bool begin(T &meta) {
         // Setup ticks
+        _fs.mkdir(_uuid);
 
-        // Create containing folder
-        // Open run dir
-        _fs->mkdir(_dir);
-        // Write meta file
+        // Write meta  
+        File f = _fs.open(_uuid + "/meta", "w", true);
+        f.write(reinterpret_cast<uint8_t*>(&meta), sizeof(T));
+        f.close();
 
-        // Instantiate logfiles
+        
+        return true;
     }
 
     void sample() {
@@ -93,6 +104,8 @@ class Run {
         // Wait for both writing and sampling task to cleanly exit.
         xSemaphoreTake(_sync, portMAX_DELAY);
         xSemaphoreTake(_sync, portMAX_DELAY);
+
+        // Finalize all logfiles
     }
 };
 
