@@ -4,12 +4,13 @@
 #include <uuid.h>
 
 #include <chrono>
+#include <memory>
 #include <vector>
 
 #include "datastream/AbstractStream.hpp"
 #include "dlf_cfg.h"
-#include "dlf_types.h"
 #include "dlf_logfile.hpp"
+#include "dlf_types.h"
 
 namespace dlf {
 using namespace std;
@@ -22,16 +23,15 @@ class Run {
     SemaphoreHandle_t _sync;
     chrono::microseconds tick_interval;
 
-    vector<LogFile> log_files;
+    vector<unique_ptr<LogFile>> log_files;
 
-public:
+   public:
     Run(streams_t all_streams, chrono::microseconds tick_interval, FS &fs) : _fs(fs) {
         _uuid = StringUUIDGen();
         _sync = xSemaphoreCreateCounting(2, 2);
 
-        log_files.push_back(LogFile(all_streams, DLF_POLLED, tick_interval, _uuid, fs, _sample_q));
-        log_files.push_back(LogFile(all_streams, DLF_EVENT, tick_interval, _uuid, fs, _sample_q));
-
+        log_files.push_back(unique_ptr<LogFile>(new LogFile(all_streams, DLF_POLLED, tick_interval, _uuid, fs, _sample_q)));
+        log_files.push_back(unique_ptr<LogFile>(new LogFile(all_streams, DLF_EVENT, tick_interval, _uuid, fs, _sample_q)));
     }
 
     template <typename T>
@@ -39,12 +39,11 @@ public:
         // Setup ticks
         _fs.mkdir(_uuid);
 
-        // Write meta  
+        // Write meta
         File f = _fs.open(_uuid + "/meta", "w", true);
-        f.write(reinterpret_cast<uint8_t*>(&meta), sizeof(T));
+        f.write(reinterpret_cast<uint8_t *>(&meta), sizeof(T));
         f.close();
 
-        
         return true;
     }
 
