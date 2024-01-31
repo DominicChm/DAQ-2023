@@ -1,16 +1,5 @@
-import { cStruct, uint8, type CTypeBase, type CType, float, uint16 } from "c-type-util";
-
-export let dataSources = {
-    "unsigned char": uint8,
-    "sin_waves_t": cStruct({
-        s5: float,
-        s10: float,
-        s1: float,
-    }),
-    "short unsigned int": uint16,
-}
-
-
+import type { CType, CTypeBase } from "c-type-util";
+import dataSources from "./config/dataTypes"
 
 export let expDataSources = expandSourceDefinitions(dataSources);
 

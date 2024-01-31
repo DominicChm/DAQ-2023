@@ -1,4 +1,4 @@
-# ESPDAQ 2023
-The I don't even know what number revision of the Baja DAQ.
+# DLFLib
+DLFLib is a generalized logging library with a fully custom file format, optimized for high-rate data logging.
 
-## [File Format](FileFormat.md)
+[Fileformat](DLF_FILES.md)
