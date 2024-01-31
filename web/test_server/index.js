@@ -3,6 +3,7 @@ const ct = require("c-type-util");
 const app = express();
 app.use(express.static("./public"));
 
+let c = 0;
 app.get("/__LIVE", (req, res) => {
     res.send(Buffer.from(ct.cStruct({
         time: ct.uint32,
@@ -15,15 +16,15 @@ app.get("/__LIVE", (req, res) => {
         }),
         d_random: ct.uint16
     }).allocLE({
-        time: Date.now(),
+        time: c++,
         data0: 10,
         data1: 100,
         sin_waves: {
-            s1: 23,
+            s1: Math.sin(c),
             s10: 22,
             s5: 5
         },
-        d_random: Math.random()
+        d_random: Math.random() * 300
     })));
 });
 

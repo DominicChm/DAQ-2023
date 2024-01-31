@@ -17,9 +17,8 @@
     let localDefinition: tChartDefinition = JSON.parse(JSON.stringify(definition));
     $: sourceEntries = Object.entries(localDefinition.sources);
     $: allStoreKeys = Object.keys($dataStore);
-    $: unselectedStoreKeys = Object.keys($dataStore).filter(k => !sourceEntries.find(([k2, _]) => k2 == k) && k != "__TIME");
+    $: unselectedStoreKeys = Object.keys($dataStore).filter((k) => !sourceEntries.find(([k2, _]) => k2 == k) && k != "__TIME");
 
-$: console.log(unselectedStoreKeys)
     const dispatch = createEventDispatcher();
 
     function addEntry() {
@@ -56,7 +55,7 @@ $: console.log(unselectedStoreKeys)
                         <div class="form-control gap-4">
                             <label class="input-group">
                                 <span class="w-24">Name</span>
-                                <input type="text" placeholder="New Run" class="input input-bordered w-full" bind:value={definition.chartName}/>
+                                <input type="text" placeholder="New Run" class="input input-bordered w-full" bind:value={definition.chartName} />
                             </label>
                             <!-- <label class="input-group">
                                 <span class="w-24">Desc</span>
@@ -80,7 +79,9 @@ $: console.log(unselectedStoreKeys)
                                                 <th class="px-0">
                                                     <button class="btn btn-ghost h-full" on:click={() => delEntry(src)}><TrashSimple size={16} /></button>
                                                 </th>
-                                                <td class:autocomplete-error={!allStoreKeys.includes(src)} class="autocomplete-error"><AutoComplete items={unselectedStoreKeys} bind:selectedItem={src} /></td>
+                                                <td class:autocomplete-error={!allStoreKeys.includes(src)} class="autocomplete-error"
+                                                    ><AutoComplete items={unselectedStoreKeys} bind:selectedItem={src} /></td
+                                                >
                                                 <td><input type="color" class="color-input" bind:value={srcopts.color} /></td>
                                             </tr>
                                         {/each}

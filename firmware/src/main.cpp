@@ -1,71 +1,95 @@
 #include <Arduino.h>
-#include <daq.h>
-#include <ui.h>
-#include <util.h>
-#include <web.h>
+#include <dlf_run.h>
 
-UI ui(Serial);
-namespace commands {
-void start_run(UI &ui) {
-    rm.start_new_run();
-}
+#include <chrono>
+// #include <dlf_types.h>
+// #include <dlf_logger.h>
+// #include <chrono>
+#include <SD_MMC.h>
 
-void stop_run(UI &ui) {
-    rm.finish_current_run();
-}
+struct {
+    uint8_t i1 = 0x01;
+    uint8_t i2 = 0x02;
+    uint8_t i3 = 0x03;
+    uint8_t i4 = 0x04;
+    uint8_t i5 = 0x05;
+} polled;
+int event_int = 0;
 
-void set_timebase(UI &ui) {
-    int tbase = ui.positional<int>();
+// DLFLogger logger(SD_MMC, "/logger1");
 
-    if (ui.parse_error()) return;
+dlf::datastream::PolledStream ds1(polled, "test", std::chrono::seconds(1));
+// dlf::datastream::EventStream ds2(event_int, "test2");
 
-    if (rm.set_time_base(tbase)) {
-        ui.printfn("T base %d", tbase);
+// DLFDataStream st_test(d, std::chrono::milliseconds(10), "test");
 
-    } else {
-        ui.printfn("Failed to set. Is a run ongoing?");
-    }
-}
+// // #include <dlf.h>
 
-void debug(UI &ui) {
-    // ui.printfn("MIN_BLOCK_SIZE: %d", rm.min_block_size());
-    // ui.printfn("BLOCK_SIZE: %d", rm.block_size());
-}
+// typedef DLFDataStream ds;
+// DLFDataStream data_sources[] = {
+//     ds(1000, d0, "data0"),
+//     ds(3000, d1, "data1"),
+//     ds(0, sin_waves, "sin waves"),
+//     ds(0, d_random, "random data"),
+// };
 
-void init() {
-    ui.add_command("start", start_run);
-    ui.add_command("stop", stop_run);
-    ui.add_command("set_tbase", set_timebase);
-    ui.add_command("debug", debug);
-}
-}  // namespace commands
-
-// void write_dev() {
-//     // yes, i'm manually writing json. deal with it.
-//     File f = SD_MMC.open("/__DEV", FILE_WRITE);
-//     f.println("{");
-//     f.printf("\"header_size\": %u,", rm.header_size());
-//     f.println("}");
+// struct meta_t {
+//     char name[128];
+//     char desc[1024];
 // }
 
+// DLFLogger rm(10, data_sources);
+
+// struct Data1 {
+//     uint32_t u;
+//     double d;
+// };
+
+// uint32_t u;
+
+// void setup() {
+//     Serial.begin(115200);
+// }
+
+// void loop() {
+//     ui.poll();
+
+//     // Generate some fun random data.
+//     sin_waves = {
+//         (float)sin(2. * M_PI * millis() / 5000) * 50 - 10,
+//         (float)sin(2. * M_PI * millis() / 10000) * 10,
+//         (float)sin(2. * M_PI * millis() / 1000) * 120 + 10};
+//     d_random = random(1337);
+
+//     delay(10);
+// }
+
+dlf::Run run(SD_MMC);
+
 void setup() {
-    daq_data.electrons.voltage_sense36 = 0x01;
-    daq_data.sus.bl_pot = 0x02;
     Serial.begin(115200);
-    Serial.print("$ ");
-    commands::init();
-    web::init();
+    Serial.println("Open SD");
+    if (!SD_MMC.begin()) {
+        Serial.println("Failed to open SD");
+    }
+
+    Serial.println("Init streams");
+    dlf::datastream::streams_t streams;
+
+    Serial.println("Push 1");
+    streams.push_back(&ds1);
+
+    // Serial.println("Push 2");
+    // streams.push_back(&ds2);
+    struct {
+        int test = 1;
+    } meta;
+
+    Serial.println("Run begin");
+    run.begin(std::move(streams), std::chrono::milliseconds(500), meta);
+    delay(5000);
+    run.close();
 }
 
 void loop() {
-    ui.poll();
-
-    // Generate some fun random data.
-    sin_waves = {
-        (float)sin(2. * M_PI * millis() / 5000) * 50 - 10,
-        (float)sin(2. * M_PI * millis() / 10000) * 10,
-        (float)sin(2. * M_PI * millis() / 1000) * 120 + 10};
-    d_random = random(1337);
-
-    delay(10);
 }

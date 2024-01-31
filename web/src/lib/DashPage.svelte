@@ -11,75 +11,126 @@
     import AutoComplete from "simple-svelte-autocomplete";
 
     export let dataStore: Readable<tLoadedApiDataContainer>;
+    export let dashIndex: number;
 
     let dispatch = createEventDispatcher();
+
+    type tDashboardDefinition = {
+        name: string;
+        author: string;
+        items: any[];
+        gridIds: number;
+    };
 
     function dispatchExit() {
         dispatch("exit");
     }
 
-    let dashboards = ["test", "lel"];
-    let selectedDashboard = null;
+    let dashboards: tDashboardDefinition[] = JSON.parse(localStorage.getItem("DASH_CONFIGS")) ?? [];
+
+    let selectedDashboard: tDashboardDefinition | null = dashboards[dashIndex];
+    $: dashIndex = dashboards.indexOf(selectedDashboard);
 
     let cursorSync = uPlot.sync("main");
 
-    let items = [
-        {
+    function createGraph() {
+        if (!selectedDashboard) return;
+        let newItem = {
             6: gridHelp.item({
+                w: 2,
+                h: 2,
                 x: 0,
                 y: 0,
-                w: 2,
-                h: 2,
             }),
-            id: 1,
-            data: { lel: "test1" },
-        },
+            id: selectedDashboard.gridIds++,
+            data: {
+                sources: {},
+                chartName: "New Chart",
+                chartType: "line",
+            },
+        };
 
-        {
-            6: gridHelp.item({
-                x: 2,
-                y: 0,
-                w: 2,
-                h: 2,
-            }),
-            id: 2,
-            data: { lel: "test2" },
-        },
-    ];
+        newItem = {
+            ...newItem,
+            6: {
+                ...newItem[6],
+                ...gridHelp.findSpace(newItem, selectedDashboard.items, 6),
+            },
+        };
+        selectedDashboard.items = [...[newItem], ...selectedDashboard.items];
+    }
+
+    function createDashboard(name, author) {
+        dashboards = [{ author, name, items: [], gridIds: 0 }, ...dashboards];
+        selectedDashboard = dashboards[0];
+        commitLocalstorage();
+    }
+
+    function commitChartEdits(itemIdx, data) {
+        selectedDashboard.items[itemIdx].data = data;
+    }
+
+    function deleteChart(idx: number) {
+        selectedDashboard.items = selectedDashboard.items.filter((_, i) => i != idx);
+    }
+
+    $: selectedDashboard, commitLocalstorage();
+
+    function commitLocalstorage() {
+        console.log("COMMITING");
+        localStorage.setItem("DASH_CONFIGS", JSON.stringify(dashboards));
+    }
 
     const cols = [[1200, 6]];
 </script>
 
 <!-- Header -->
 <div class="navbar shadow-lg bg-base-300 rounded-box m-3 w-auto flex justify-between">
-    <!-- <div class="flex-none">
-        <button class="btn btn-square btn-ghost">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="inline-block w-6 h-6 stroke-current">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
-        </button>
-    </div> -->
-    <div class="min-w-0">
-        <AutoComplete items={dashboards} bind:selectedItem={selectedDashboard} />
+    <div class="min-w-0 flex gap-4">
+        <AutoComplete items={dashboards} labelFieldName="name" bind:selectedItem={selectedDashboard} />
+        <button class="btn" on:click={() => createDashboard("new", "auth")}>Add</button>
+        <button class="btn">Delete</button>
     </div>
     <div class="px-2 mx-2">
         <span class="text-lg font-bold"> ESPDAQ 2023 </span>
     </div>
-    <button class="btn btn-square btn-ghost btn-error" on:click={dispatchExit}>
-        <CloseIcon size="32" />
-    </button>
+    <div class="min-w-0 flex gap-4">
+        <button class="btn" on:click={createGraph}>Add Chart</button>
+        <button class="btn btn-square btn-ghost btn-error" on:click={dispatchExit}>
+            <CloseIcon size="32" />
+        </button>
+    </div>
 </div>
 
 <!-- Dashboard -->
-<div class="overflow-y-scroll flex-1 ">
+<div class="overflow-y-scroll flex-1">
     <div class="min-w-0 lg:max-w-full max-w-[95%]">
-        <Grid gap={[10, 5]} {items} {cols} rowHeight={100} let:item let:dataItem let:movePointerDown>
-            <div class="card card-bordered bg-base-200 h-full overflow-hidden">
-                <div class="card-body h-full p-0 overflow-hidden">
-                    <DashChart {cursorSync} {dataStore} data={dataItem?.data} />
+        {#if selectedDashboard}
+            <Grid
+                gap={[10, 5]}
+                bind:items={selectedDashboard.items}
+                {cols}
+                rowHeight={100}
+                let:item
+                let:dataItem
+                let:movePointerDown
+                let:index
+                throttleUpdate={500}
+                throttleResize={500}
+            >
+                <div class="card card-bordered bg-base-200 h-full overflow-hidden">
+                    <div class="card-body h-full p-0 overflow-hidden">
+                        <DashChart
+                            {cursorSync}
+                            {dataStore}
+                            data={dataItem?.data}
+                            on:commit={({ detail }) => commitChartEdits(index, detail)}
+                            on:delete={() => deleteChart(index)}
+                        />
+                    </div>
                 </div>
-            </div>
-        </Grid>
+            </Grid>
+        {/if}
     </div>
 </div>
 
