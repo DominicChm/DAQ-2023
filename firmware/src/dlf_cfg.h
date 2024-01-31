@@ -4,9 +4,10 @@
  *
  * Slow SD cards might need a larger queue
  */
-#define DLF_QUEUE_SIZE 64
 
-#define DLF_SD_BLOCK_WRITE_SIZE 512
+// #define DLF_SD_BLOCK_WRITE_SIZE 512
+#define DLF_SD_BLOCK_WRITE_SIZE 32
+
 #define DLF_LOGFILE_BUFFER_SIZE DLF_SD_BLOCK_WRITE_SIZE * 10
 
 
