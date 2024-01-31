@@ -1,18 +1,25 @@
 #include <Arduino.h>
 #include <dlf_run.h>
+
 #include <chrono>
 // #include <dlf_types.h>
 // #include <dlf_logger.h>
 // #include <chrono>
 #include <SD_MMC.h>
 
-int polled_int = 0;
+struct {
+    uint8_t i1 = 0x01;
+    uint8_t i2 = 0x02;
+    uint8_t i3 = 0x03;
+    uint8_t i4 = 0x04;
+    uint8_t i5 = 0x05;
+} polled;
 int event_int = 0;
 
 // DLFLogger logger(SD_MMC, "/logger1");
 
-dlf::datastream::PolledStream ds1(polled_int, "test", std::chrono::seconds(1));
-dlf::datastream::EventStream ds2(event_int, "test2");
+dlf::datastream::PolledStream ds1(polled, "test", std::chrono::seconds(1));
+// dlf::datastream::EventStream ds2(event_int, "test2");
 
 // DLFDataStream st_test(d, std::chrono::milliseconds(10), "test");
 
@@ -60,14 +67,28 @@ dlf::datastream::EventStream ds2(event_int, "test2");
 dlf::Run run(SD_MMC);
 
 void setup() {
+    Serial.begin(115200);
+    Serial.println("Open SD");
+    if (!SD_MMC.begin()) {
+        Serial.println("Failed to open SD");
+    }
+
+    Serial.println("Init streams");
     dlf::datastream::streams_t streams;
+
+    Serial.println("Push 1");
     streams.push_back(&ds1);
-    streams.push_back(&ds2);
+
+    // Serial.println("Push 2");
+    // streams.push_back(&ds2);
     struct {
         int test = 1;
     } meta;
 
-    run.begin(streams, std::chrono::microseconds {10000}, meta);
+    Serial.println("Run begin");
+    run.begin(std::move(streams), std::chrono::milliseconds(500), meta);
+    delay(5000);
+    run.close();
 }
 
 void loop() {

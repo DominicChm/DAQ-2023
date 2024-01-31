@@ -5,16 +5,6 @@
 // https://stackoverflow.com/questions/3553296/sizeof-single-struct-member-in-c
 #define member_sizeof(type, member) sizeof(((type *)0)->member)
 
-/**
- * Halts a task on a critical assertion by putting it into an infinite loop.
- */
-[[noreturn]] inline void dlf_assert(bool assertion, const char *reason) {
-    while (1) {
-        Serial.printf("ASSERT FAILURE: %s\n", reason);
-        vTaskDelay(pdMS_TO_TICKS(3000));
-    }
-}
-
 // https://stackoverflow.com/a/59522794/16238567
 inline constexpr unsigned int hash_str(const char *s, int off = 0) {
     return !s[off] ? 5381 : (hash_str(s, off + 1) * 33) ^ s[off];

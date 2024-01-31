@@ -12,16 +12,12 @@
 #include "../dlf_util.h"
 
 namespace dlf::datastream {
-enum DLFStreamType : uint8_t {
-    DLF_POLLED,
-    DLF_EVENT,
-};
 
-inline const char *stream_type_to_string(DLFStreamType t) {
+inline const char *stream_type_to_string(dlf_stream_type_e t) {
     switch (t) {
-        case DLF_POLLED:
+        case POLLED:
             return "polled";
-        case DLF_EVENT:
+        case EVENT:
             return "event";
         default:
             return "PROBLEM";
@@ -47,8 +43,6 @@ class AbstractStream {
     template <typename T>
     AbstractStream(T &dat, String id, String type_id = characteristic_type_name<T>())
         : _data_size(sizeof(T)), _data_source(reinterpret_cast<uint8_t *>(&dat)) {
-        dlf_assert(id.length() < member_sizeof(dlf_stream_header_t, id), "ID too long");
-        dlf_assert(type_id.length() < member_sizeof(dlf_stream_header_t, type_id), "Type ID too long");
     }
 
    public:
@@ -56,7 +50,7 @@ class AbstractStream {
 
     virtual size_t size() = 0;
 
-    virtual DLFStreamType type() = 0;
+    virtual dlf_stream_type_e type() = 0;
 
     inline size_t data_size() {
         return _data_size;

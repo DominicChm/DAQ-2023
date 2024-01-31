@@ -11,6 +11,6 @@ size_t EventStream::size() {
     return data_size() + 5;
 }
 
-DLFStreamType EventStream::type() {
-    return DLF_EVENT;
+dlf_stream_type_e EventStream::type() {
+    return EVENT;
 }

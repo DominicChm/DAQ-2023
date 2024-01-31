@@ -22,6 +22,6 @@ class EventStream : public AbstractStream {
 
     size_t size();
 
-    DLFStreamType type();
+    dlf_stream_type_e type();
 };
 }  // namespace dlf::datastream

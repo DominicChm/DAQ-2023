@@ -46,9 +46,9 @@ class LogFile {
      *
      * Uses existing streambuffer architecture because why not.
      */
-    void _write_header() {
+    void _write_header(dlf_stream_type_e stream_type) {
         dlf_logfile_header_t h;
-        h.stream_type = EVENT;
+        h.stream_type = stream_type;
         h.num_streams = _handles.size();
         xStreamBufferSend(_stream, &h, sizeof(h), portMAX_DELAY);
 
@@ -58,8 +58,8 @@ class LogFile {
     }
 
    public:
-    LogFile(stream_handles_t handles, DLFStreamType stream_type, String dir, FS &fs)
-        : _fs(fs), _handles(handles) {
+    LogFile(stream_handles_t handles, dlf_stream_type_e stream_type, String dir, FS &fs)
+        : _fs(fs), _handles(std::move(handles)) {
         _filename = dir + "/" + stream_type_to_string(stream_type);
 
         // Set up class internals
@@ -84,15 +84,15 @@ class LogFile {
         }
 
         // Init data flusher
-        if (xTaskCreate(task_flusher, "Flusher", 1024, this, 5, NULL) != pdTRUE) {
+        _state = LOGGING;
+
+        if (xTaskCreate(task_flusher, "Flusher",  2048, this, 5, NULL) != pdTRUE) {
             _state = FLUSHER_CREATE_ERROR;
             return;
         }
 
         // Initialize logfile
-        _write_header();
-
-        _state = LOGGING;
+        _write_header(stream_type);
     }
 
     /**
@@ -113,9 +113,6 @@ class LogFile {
         }
     }
 
-    bool begin() {
-    }
-
     static void task_flusher(void *arg) {
         auto self = static_cast<LogFile *>(arg);
 
@@ -128,10 +125,13 @@ class LogFile {
 
         // If errored, exit immediately
         if (self->_state != FLUSHING) {
+            Serial.printf("FLUSHER ERROR WITH %x\n", self->_state);
+
             vTaskDelete(NULL);
             return;
         }
 
+        Serial.println("Flushing remaining bytes...");
         // Flush remaining bytes
         while (xStreamBufferBytesAvailable(self->_stream) > 0 && self->_state == FLUSHING) {
             size_t received = xStreamBufferReceive(self->_stream, buf, sizeof(buf), 0);
@@ -140,20 +140,33 @@ class LogFile {
 
         self->_state == FLUSHED;
         xSemaphoreGive(self->_sync);
+
+        Serial.printf("Flusher exited cleanly w/ HWM %u\n", uxTaskGetStackHighWaterMark(NULL));
+        vTaskDelete(NULL);
     }
 
     void close() {
+        if (_state != LOGGING) return;
+
+        _state = FLUSHING;
+        Serial.println("Closing logfile");
         xSemaphoreTake(_sync, portMAX_DELAY);  // wait for flusher to finish up.
+        Serial.println("Continue logfile close");
 
         // Cleanup dynamic allocations
-        vStreamBufferDelete(_stream);
+        vStreamBufferDelete(_stream); // FIXME: this crashes for some reason.
         vSemaphoreDelete(_sync);
+        Serial.println("sem delteted");
+
+
 
         // Update header with # of ticks
         _f.seek(offsetof(dlf_logfile_header_t, tick_span));
         _f.write(reinterpret_cast<uint8_t *>(&_last_tick), sizeof(dlf_tick_t));
+        Serial.println("calling close");
 
         _f.close();
+        Serial.println("Logfile closed cleanly");
     }
 };
 }  // namespace dlf
