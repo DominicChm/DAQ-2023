@@ -17,6 +17,9 @@
 namespace dlf {
 using namespace std;
 
+
+// TODO: Tick timings
+
 class Run {
     String _uuid;
     FS &_fs;
@@ -34,10 +37,9 @@ class Run {
 
     template <typename T>
     bool begin(streams_t all_streams, chrono::microseconds tick_interval, T &meta) {
-        // Check tick interval isn't 0
-        if (tick_interval.count() <= 0) return false;
+        assert(tick_interval.count() > 0);
 
-        Serial.printf("Starting run %s", _uuid.c_str());
+        Serial.printf("Starting run %s\n", _uuid.c_str());
 
         _streams = all_streams;
         _tick_interval = tick_interval;
@@ -50,6 +52,9 @@ class Run {
         f.write(reinterpret_cast<uint8_t *>(&meta), sizeof(T));
         f.close();
 
+        // Writes metafile for this log.
+        create_metafile();
+
         // Create logfile instances
         create_logfile_for(POLLED);
         create_logfile_for(EVENT);
@@ -59,28 +64,33 @@ class Run {
         _status = LOGGING;
 
         // Setup ticks
-        xTaskCreate(task_sampler, "Sampler", 4096, this, 5, NULL);
+        xTaskCreate(task_sampler, "Sampler", 4096 * 2, this, 5, NULL);
 
         return true;
     }
 
+    void create_metafile() {
+
+    }
+
     void create_logfile_for(dlf_stream_type_e t) {
         stream_handles_t handles;
-
-        for (size_t i = 0, e = _streams.size(); i != e; ++i) {
-            AbstractStream *ds = _streams[i];
-
-            if (ds->type() == t) {
-                handles.push_back(move(ds->handle(_tick_interval, i)));
+#ifdef DEBUG
+        DEBUG.printf("Creating %s logfile\n", stream_type_to_string(t));
+#endif
+        size_t idx = 0;
+        for (auto &stream : _streams) {
+            if (stream->type() == t) {
+                handles.push_back(move(stream->handle(_tick_interval, idx++)));
             }
         }
         _log_files.push_back(unique_ptr<LogFile>(new LogFile(move(handles), t, _uuid, _fs)));
     }
 
     /**
-     * NOTE: Has caused canary issues if stack too small (1024 is problematic). 
-     * @brief 
-     * @param arg 
+     * NOTE: Has caused canary issues if stack too small (1024 is problematic).
+     * @brief
+     * @param arg
      */
     static void task_sampler(void *arg) {
         Serial.println("Sampler inited");
@@ -93,14 +103,18 @@ class Run {
 
         // Run at constant tick interval
         for (dlf_tick_t tick = 0; self->_status == LOGGING; tick++) {
-            Serial.println("SAMPLING");
-
+#ifdef DEBUG
+            DEBUG.printf("Sample\n\ttick: %d\n", tick);
+#endif
             for (auto &lf : self->_log_files) {
                 lf->sample(tick);
             }
             xTaskDelayUntil(&prev_run, interval);
         }
-        Serial.println("Sampler exiting!");
+#ifdef DEBUG
+        DEBUG.println("Sampler exiting cleanly");
+#endif
+
         xSemaphoreGive(self->_sync);
         vTaskDelete(NULL);
     }

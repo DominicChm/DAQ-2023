@@ -1,6 +1,5 @@
 #pragma once
 
-
 #include "AbstractStreamHandle.hpp"
 #include "EventStream.hpp"
 
@@ -9,8 +8,7 @@ class EventStreamHandle : public AbstractStreamHandle {
     size_t _hash = 0;
 
    public:
-    EventStreamHandle(EventStream *stream);
-
+    EventStreamHandle(EventStream *stream, dlf_stream_idx_t idx);
 
     inline size_t current_hash();
 
@@ -21,4 +19,3 @@ class EventStreamHandle : public AbstractStreamHandle {
     size_t encode_into(StreamBufferHandle_t buf, dlf_tick_t tick);
 };
 }  // namespace dlf::datastream
-

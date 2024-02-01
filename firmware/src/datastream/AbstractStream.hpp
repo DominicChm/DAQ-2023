@@ -43,8 +43,8 @@ class AbstractStream {
     }
 
    public:
-    String *id;
-    String *type_id;
+    String id;
+    String type_id;
 
     virtual std::unique_ptr<AbstractStreamHandle> handle(microseconds tick_interval, dlf_stream_idx_t idx) = 0;
 

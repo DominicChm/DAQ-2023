@@ -12,3 +12,6 @@
 
 
 #define DLF_FREERTOS_DURATION chrono::duration<TickType_t, ratio<1, configTICK_RATE_HZ>>
+
+// Comment out to remove debug messaging
+#define DEBUG Serial
