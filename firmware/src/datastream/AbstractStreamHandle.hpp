@@ -8,8 +8,9 @@ namespace dlf::datastream {
 class AbstractStreamHandle {
    protected:
     AbstractStream *stream;
+    dlf_stream_idx_t idx;
 
-    AbstractStreamHandle(AbstractStream *stream) : stream(stream) {}
+    AbstractStreamHandle(AbstractStream *stream, dlf_stream_idx_t idx) : stream(stream), idx(idx) {}
 
    public:
     virtual bool available(dlf_tick_t tick) = 0;

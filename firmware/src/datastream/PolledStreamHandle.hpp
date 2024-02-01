@@ -2,8 +2,8 @@
 
 #include <memory>
 
-#include "PolledStream.hpp"
 #include "AbstractStreamHandle.hpp"
+#include "PolledStream.hpp"
 
 namespace dlf::datastream {
 
@@ -12,7 +12,7 @@ class PolledStreamHandle : public AbstractStreamHandle {
     dlf_tick_t _sample_phase_ticks;
 
    public:
-    PolledStreamHandle(PolledStream *stream, dlf_tick_t sample_interval_ticks, dlf_tick_t sample_phase);
+    PolledStreamHandle(PolledStream *stream, dlf_stream_idx_t idx, dlf_tick_t sample_interval_ticks, dlf_tick_t sample_phase);
 
     bool available(dlf_tick_t tick);
 
