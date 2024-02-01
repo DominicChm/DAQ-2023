@@ -19,10 +19,10 @@ bool EventStreamHandle::available(dlf_tick_t tick) {
 }
 
 size_t EventStreamHandle::encode_header_into(StreamBufferHandle_t buf) {
-    dlf_stream_header_t h;
-    strncpy(h.id, "ID", sizeof(h.id));
-    strncpy(h.type_id, "TYPE ID", sizeof(h.id));
-    strncpy(h.notes, "NOTES", sizeof(h.id));
+    dlf_event_stream_header_t h;
+    strlcpy(h.type_id, stream->type_id->c_str(), sizeof(h.type_id));
+    strlcpy(h.id, stream->id->c_str(), sizeof(h.type_id));
+    strlcpy(h.notes, "NOTES....", sizeof(h.type_id));
 
     return xStreamBufferSend(buf, &h, sizeof(h), portMAX_DELAY);
 }
