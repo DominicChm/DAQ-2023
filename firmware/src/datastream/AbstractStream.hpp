@@ -37,15 +37,15 @@ class AbstractStream {
     const size_t _data_size;
     const uint8_t *_data_source;
 
-    String *id;
-    String *type_id;
-
     template <typename T>
     AbstractStream(T &dat, String id, String type_id = characteristic_type_name<T>())
-        : _data_size(sizeof(T)), _data_source(reinterpret_cast<uint8_t *>(&dat)) {
+        : _data_size(sizeof(T)), _data_source(reinterpret_cast<uint8_t *>(&dat)), id(id), type_id(type_id) {
     }
 
    public:
+    String *id;
+    String *type_id;
+
     virtual std::unique_ptr<AbstractStreamHandle> handle(microseconds tick_interval, dlf_stream_idx_t idx) = 0;
 
     virtual size_t size() = 0;
@@ -64,4 +64,3 @@ class AbstractStream {
 typedef std::vector<AbstractStream *> streams_t;
 
 }  // namespace dlf::datastream
-
