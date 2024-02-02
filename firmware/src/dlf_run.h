@@ -17,7 +17,6 @@
 namespace dlf {
 using namespace std;
 
-
 // TODO: Tick timings
 
 class Run {
@@ -30,30 +29,23 @@ class Run {
     vector<unique_ptr<LogFile>> _log_files;
 
    public:
-    Run(FS &fs) : _fs(fs) {
-        _uuid = "/" + StringUUIDGen();
-        _sync = xSemaphoreCreateCounting(1, 0);
-    }
-
     template <typename T>
-    bool begin(streams_t all_streams, chrono::microseconds tick_interval, T &meta) {
+    Run(FS &fs, streams_t all_streams, chrono::microseconds tick_interval, T &meta)
+        : _fs(fs), _streams(all_streams), _tick_interval(tick_interval) {
         assert(tick_interval.count() > 0);
 
-        Serial.printf("Starting run %s\n", _uuid.c_str());
+        _uuid = "/" + StringUUIDGen();
+        _sync = xSemaphoreCreateCounting(1, 0);
 
-        _streams = all_streams;
-        _tick_interval = tick_interval;
+#ifdef DEBUG
+        Serial.printf("Starting run %s\n", _uuid.c_str());
+#endif
 
         // Make directory to contain run files.
         _fs.mkdir(_uuid);
 
-        // Write meta
-        File f = _fs.open(_uuid + "/meta", "w", true);
-        f.write(reinterpret_cast<uint8_t *>(&meta), sizeof(T));
-        f.close();
-
         // Writes metafile for this log.
-        create_metafile();
+        create_metafile(meta);
 
         // Create logfile instances
         create_logfile_for(POLLED);
@@ -65,19 +57,34 @@ class Run {
 
         // Setup ticks
         xTaskCreate(task_sampler, "Sampler", 4096 * 2, this, 5, NULL);
-
-        return true;
     }
 
-    void create_metafile() {
+    template <typename T>
+    void create_metafile(T &meta) {
+#ifdef DEBUG
+        DEBUG.print("Creating metafile... ");
+#endif
+        File f = _fs.open(_uuid + "/meta.dlf", "w", true);
 
+        dlf_meta_header_t h;
+        h.tick_base_us = _tick_interval.count();
+        strlcpy(h.application, "TESTAPP", sizeof(h.application));
+        h.meta_size = sizeof(T);
+
+        f.write(reinterpret_cast<uint8_t *>(&h), sizeof(h));
+        f.write(reinterpret_cast<uint8_t *>(&meta), sizeof(T));
+        f.close();
+#ifdef DEBUG
+        DEBUG.print("Done!\n");
+#endif
     }
 
     void create_logfile_for(dlf_stream_type_e t) {
-        stream_handles_t handles;
 #ifdef DEBUG
-        DEBUG.printf("Creating %s logfile\n", stream_type_to_string(t));
+        DEBUG.printf("Creating %s logfile", stream_type_to_string(t));
 #endif
+        stream_handles_t handles;
+
         size_t idx = 0;
         for (auto &stream : _streams) {
             if (stream->type() == t) {
@@ -103,7 +110,7 @@ class Run {
 
         // Run at constant tick interval
         for (dlf_tick_t tick = 0; self->_status == LOGGING; tick++) {
-#ifdef DEBUG
+#if defined(DEBUG) && defined(SILLY)
             DEBUG.printf("Sample\n\ttick: %d\n", tick);
 #endif
             for (auto &lf : self->_log_files) {

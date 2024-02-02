@@ -18,11 +18,12 @@ struct {
 uint8_t event_uint = 0x01;
 uint8_t event_uint2 = 0x10;
 
-dlf::datastream::PolledStream ds1(polled, "Polled 1", std::chrono::seconds(1));
-dlf::datastream::EventStream ds2(event_uint, "Event 2");
-dlf::datastream::EventStream ds3(event_uint2, "Event 3");
+dlf::datastream::PolledStream p1(polled, "Polled 1", std::chrono::seconds(1));
+dlf::datastream::PolledStream p2(polled, "Polled 2", std::chrono::seconds(1));
 
-dlf::Run run(SD_MMC);
+dlf::datastream::EventStream e1(event_uint, "Event 2");
+dlf::datastream::EventStream e2(event_uint2, "Event 3");
+
 
 
 void setup() {
@@ -35,16 +36,17 @@ void setup() {
     Serial.println("Init streams");
     dlf::datastream::streams_t streams;
 
-    streams.push_back(&ds1);
-    streams.push_back(&ds2);
-    streams.push_back(&ds3);
+    streams.push_back(&p1);
+    streams.push_back(&p2);
+    streams.push_back(&e1);
+    streams.push_back(&e2);
 
     struct {
         int test = 1;
     } meta;
 
     Serial.printf("Run begin! Heap: %u\n", heap_caps_get_free_size(MALLOC_CAP_DEFAULT));
-    run.begin(std::move(streams), std::chrono::milliseconds(500), meta);
+    dlf::Run run(SD_MMC, streams, std::chrono::milliseconds(10), meta);
 
     delay(2500);
     Serial.println("Modifying event stream 1!");
