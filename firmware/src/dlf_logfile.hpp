@@ -60,7 +60,7 @@ class LogFile {
    public:
     LogFile(stream_handles_t handles, dlf_stream_type_e stream_type, String dir, FS &fs)
         : _fs(fs), _handles(std::move(handles)) {
-        _filename = dir + "/" + stream_type_to_string(stream_type);
+        _filename = dir + "/" + stream_type_to_string(stream_type) + ".dlf";
 
         // Set up class internals
         _stream = xStreamBufferCreate(DLF_LOGFILE_BUFFER_SIZE, DLF_SD_BLOCK_WRITE_SIZE);

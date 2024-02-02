@@ -18,7 +18,7 @@ inline size_t EventStreamHandle::current_hash() {
 // if perf is an issue look for alternatives.
 bool EventStreamHandle::available(dlf_tick_t tick) {
     bool a = _hash != current_hash();
-#ifdef DEBUG
+#if defined(DEBUG) && defined(SILLY)
     DEBUG.printf(
         "\tCheck Event Data\n"
         "\t\tid: %s\n"

@@ -8,6 +8,9 @@
 		},
 		{
 			"path": "docs-src"
+		},
+		{
+			"path": "js-lib"
 		}
 	],
 	"settings": {

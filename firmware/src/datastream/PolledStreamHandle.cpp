@@ -9,7 +9,7 @@ PolledStreamHandle::PolledStreamHandle(PolledStream *stream, dlf_stream_idx_t id
 bool PolledStreamHandle::available(dlf_tick_t tick) {
     bool a = _sample_interval_ticks == 0 || ((tick + _sample_phase_ticks) % _sample_interval_ticks) == 0;
 
-#ifdef DEBUG
+#if defined(DEBUG) && defined(SILLY)
     DEBUG.printf(
         "\tCheck Polled Data\n"
         "\t\tid: %s\n"

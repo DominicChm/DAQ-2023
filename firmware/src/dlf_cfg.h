@@ -15,3 +15,5 @@
 
 // Comment out to remove debug messaging
 #define DEBUG Serial
+
+// #define SILLY
