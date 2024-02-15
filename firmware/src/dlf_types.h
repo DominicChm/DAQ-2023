@@ -29,6 +29,7 @@ enum dlf_file_state_e : int8_t {
     LOGGING = 2,
     FLUSHING = 3,
     FLUSHED = 4,
+    CLOSED = 5,
 };
 
 enum dlf_stream_type_e : uint8_t {
@@ -38,10 +39,10 @@ enum dlf_stream_type_e : uint8_t {
 
 /* Overall Header Definition (meta.dlf) */
 struct dlf_meta_header_t {
-    uint16_t magic = DLF_MAGIC;           // IDs DLF files. Also allows auto-detection of LSB/MSB encoding.
-    dlf_time_us_t tick_base_us;           // Base time interval, in us. Limits how fast samples will be stored.
-    char application[32] = {0};           // An arbitrary application-specific identifier. Used to select a metadata parser.
-    uint32_t meta_size;  // Metadata size stored in case there is no metadata parser available
+    uint16_t magic = DLF_MAGIC;  // IDs DLF files. Also allows auto-detection of LSB/MSB encoding.
+    dlf_time_us_t tick_base_us;  // Base time interval, in us. Limits how fast samples will be stored.
+    char application[32] = {0};  // An arbitrary application-specific identifier. Used to select a metadata parser.
+    uint32_t meta_size;          // Metadata size stored in case there is no metadata parser available
 
     // Next: Metadata
 } __attribute__((packed));
@@ -61,6 +62,7 @@ struct dlf_stream_header_t {
     char type_id[128] = {0};  // Data type identifier. Used to select a parser. (ie "int", "float", "struct arbitrary")
     char id[32] = {0};        // Unique identifier for this specific stream
     char notes[128] = {0};    // Anything that needs to be communicated about this data stream.
+    uint32_t type_size;       // Records the size of this type to allow parsing even when parser is not found.
 } __attribute__((packed));
 
 struct dlf_polled_stream_header_t : dlf_stream_header_t {

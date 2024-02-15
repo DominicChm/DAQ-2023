@@ -11,8 +11,6 @@
 #include "../dlf_types.h"
 #include "../dlf_util.h"
 
-namespace dlf::datastream {
-
 inline const char *stream_type_to_string(dlf_stream_type_e t) {
     switch (t) {
         case POLLED:
@@ -23,6 +21,8 @@ inline const char *stream_type_to_string(dlf_stream_type_e t) {
             return "PROBLEM";
     }
 }
+
+namespace dlf::datastream {
 
 using std::chrono::microseconds;
 
@@ -38,7 +38,7 @@ class AbstractStream {
     const uint8_t *_data_source;
 
     template <typename T>
-    AbstractStream(T &dat, String id, String type_id = characteristic_type_name<T>())
+    AbstractStream(T &dat, String id, const char *type_id = characteristic_type_name<T>())
         : _data_size(sizeof(T)), _data_source(reinterpret_cast<uint8_t *>(&dat)), id(id), type_id(type_id) {
     }
 
@@ -46,9 +46,13 @@ class AbstractStream {
     String id;
     String type_id;
 
+    /**
+     * @brief Creates a new, linked StreamHandle
+     * @param tick_interval
+     * @param idx
+     * @return
+     */
     virtual std::unique_ptr<AbstractStreamHandle> handle(microseconds tick_interval, dlf_stream_idx_t idx) = 0;
-
-    virtual size_t size() = 0;
 
     virtual dlf_stream_type_e type() = 0;
 

@@ -35,6 +35,7 @@ size_t PolledStreamHandle::encode_header_into(StreamBufferHandle_t buf) {
     strlcpy(h.type_id, stream->type_id.c_str(), sizeof(h.type_id));
     strlcpy(h.id, stream->id.c_str(), sizeof(h.type_id));
     strlcpy(h.notes, "NOTES....", sizeof(h.type_id));
+    h.type_size = stream->data_size();
     h.tick_interval = _sample_interval_ticks;
     h.tick_phase = _sample_phase_ticks;
 

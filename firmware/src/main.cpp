@@ -7,19 +7,29 @@
 // #include <chrono>
 #include <SD_MMC.h>
 
-struct {
+struct polled_data1 {
     uint8_t i1 = 0x01;
     uint8_t i2 = 0x02;
     uint8_t i3 = 0x03;
     uint8_t i4 = 0x04;
     uint8_t i5 = 0x05;
-} polled;
+} polled1;
+
+struct polled_data2 {
+    uint8_t i1 = 0x06;
+    uint8_t i2 = 0x07;
+    uint8_t i3 = 0x08;
+    uint8_t i4 = 0x09;
+    uint8_t i5 = 0x0A;
+    uint8_t i6 = 0x0A;
+} polled2;
+
 
 uint8_t event_uint = 0x01;
 uint8_t event_uint2 = 0x10;
 
-dlf::datastream::PolledStream p1(polled, "Polled 1", std::chrono::seconds(1));
-dlf::datastream::PolledStream p2(polled, "Polled 2", std::chrono::seconds(1));
+dlf::datastream::PolledStream p1(polled1, "Polled 1", std::chrono::seconds(1));
+dlf::datastream::PolledStream p2(polled2, "Polled 2", std::chrono::seconds(1));
 
 dlf::datastream::EventStream e1(event_uint, "Event 2");
 dlf::datastream::EventStream e2(event_uint2, "Event 3");
