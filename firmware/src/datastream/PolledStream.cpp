@@ -19,10 +19,6 @@ stream_handle_t PolledStream::handle(microseconds tick_interval, dlf_stream_idx_
         sample_phase_ticks));
 }
 
-size_t PolledStream::size() {
-    return data_size();
-}
-
 dlf_stream_type_e PolledStream::type() {
     return POLLED;
 }

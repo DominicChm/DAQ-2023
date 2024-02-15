@@ -5,6 +5,12 @@
 
 namespace dlf::datastream {
 
+/**
+ * @brief Provides access to the stream of data underlying an AbstractStream
+ * 
+ * Provides utilities for reading and encoding data at proper intervals into 
+ * the formats defined by concrete classes.
+ */
 class AbstractStreamHandle {
    protected:
     AbstractStream *stream;

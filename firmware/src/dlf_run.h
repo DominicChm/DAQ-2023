@@ -17,7 +17,7 @@
 namespace dlf {
 using namespace std;
 
-// TODO: Tick timings
+// Todo: Performance timings
 
 class Run {
     String _uuid;

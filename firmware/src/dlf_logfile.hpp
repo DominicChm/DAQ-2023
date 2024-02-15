@@ -30,12 +30,18 @@ using namespace std;
  */
 class LogFile {
    protected:
+    /**
+     * @brief Data stream handles logged by this logfile
+     */
     stream_handles_t _handles;
 
     FS &_fs;
     String _filename;
     File _f;
 
+    /**
+     * @brief Streambuffer responsible for transferring data from sampler task to SD writer task
+     */
     StreamBufferHandle_t _stream;
     dlf_file_state_e _state;
     SemaphoreHandle_t _sync;
@@ -55,6 +61,14 @@ class LogFile {
         for (auto &handle : _handles) {
             handle->encode_header_into(_stream);
         }
+    }
+
+    void _close_file() {
+        // Update header with # of ticks
+        _f.seek(offsetof(dlf_logfile_header_t, tick_span));
+        _f.write(reinterpret_cast<uint8_t *>(&_last_tick), sizeof(dlf_tick_t));
+        Serial.println("calling close");
+        _f.close();
     }
 
    public:
@@ -86,7 +100,7 @@ class LogFile {
         // Init data flusher
         _state = LOGGING;
 
-        if (xTaskCreate(task_flusher, "Flusher",  2048, this, 5, NULL) != pdTRUE) {
+        if (xTaskCreate(task_flusher, "Flusher", 2048, this, 5, NULL) != pdTRUE) {
             _state = FLUSHER_CREATE_ERROR;
             return;
         }
@@ -97,6 +111,9 @@ class LogFile {
 
     /**
      * @brief Samples data. Intended to be externally called at the tick interval.
+     *
+     * Called by the Run class to trigger a sample.
+     *
      * @param tick
      */
     void sample(dlf_tick_t tick) {
@@ -113,6 +130,10 @@ class LogFile {
         }
     }
 
+    /**
+     * @brief Task responsible for writing data to SD
+     * @param arg
+     */
     static void task_flusher(void *arg) {
         auto self = static_cast<LogFile *>(arg);
 
@@ -122,6 +143,8 @@ class LogFile {
             size_t received = xStreamBufferReceive(self->_stream, buf, sizeof(buf), pdMS_TO_TICKS(1000));
             self->_f.write(buf, received);
         }
+
+        /* BEGIN EXIT - NO LONGER IN LOGGING STATE */
 
         // If errored, exit immediately
         if (self->_state != FLUSHING) {
@@ -149,23 +172,15 @@ class LogFile {
         if (_state != LOGGING) return;
 
         _state = FLUSHING;
-        Serial.println("Closing logfile");
         xSemaphoreTake(_sync, portMAX_DELAY);  // wait for flusher to finish up.
-        Serial.println("Continue logfile close");
+        _state = CLOSED;
 
         // Cleanup dynamic allocations
-        vStreamBufferDelete(_stream); // FIXME: this crashes for some reason.
+        vStreamBufferDelete(_stream);
         vSemaphoreDelete(_sync);
-        Serial.println("sem delteted");
 
-
-
-        // Update header with # of ticks
-        _f.seek(offsetof(dlf_logfile_header_t, tick_span));
-        _f.write(reinterpret_cast<uint8_t *>(&_last_tick), sizeof(dlf_tick_t));
-        Serial.println("calling close");
-
-        _f.close();
+        // Finally, update and close file
+        _close_file();
         Serial.println("Logfile closed cleanly");
     }
 };
