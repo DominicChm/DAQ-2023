@@ -8,6 +8,10 @@ export default defineConfig({
 	output: 'static',
 	outDir: '../docs',
 
+	build: {
+		assets: "astro"
+	},
+
 	integrations: [
 		starlight({
 			title: 'My Docs',
