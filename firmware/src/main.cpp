@@ -1,76 +1,63 @@
 #include <Arduino.h>
-#include <dlf_run.h>
-
-#include <chrono>
-// #include <dlf_types.h>
-// #include <dlf_logger.h>
-// #include <chrono>
+#include <dlf_logger.h>
 #include <SD_MMC.h>
+#include <FastLED.h>
 
-struct polled_data1 {
-    uint8_t i1 = 0x01;
-    uint8_t i2 = 0x02;
-    uint8_t i3 = 0x03;
-    uint8_t i4 = 0x04;
-    uint8_t i5 = 0x05;
-} polled1;
+#define PIN_ARGB 26
 
-struct polled_data2 {
-    uint8_t i1 = 0x06;
-    uint8_t i2 = 0x07;
-    uint8_t i3 = 0x08;
-    uint8_t i4 = 0x09;
-    uint8_t i5 = 0x0A;
-    uint8_t i6 = 0x0A;
-} polled2;
+using std::chrono::seconds;
+
+bool led_state = 0;
+
+CSCLogger logger(SD_MMC);
+
+CRGB leds[3];
+
+template <uint8_t DATA_PIN, EOrder RGB_ORDER = GRB>
+class IN_PI42TAS : public ClocklessController<DATA_PIN, C_NS(300), C_NS(600), C_NS(200), RGB_ORDER, 4> {};
 
 
-uint8_t event_uint = 0x01;
-uint8_t event_uint2 = 0x10;
+long start = millis();
+run_handle_t run;
+void setup()
+{
+    FastLED.addLeds<IN_PI42TAS, PIN_ARGB, GRB>(leds, 3);
 
-dlf::datastream::PolledStream p1(polled1, "Polled 1", std::chrono::seconds(1));
-dlf::datastream::PolledStream p2(polled2, "Polled 2", std::chrono::seconds(1));
-
-dlf::datastream::EventStream e1(event_uint, "Event 2");
-dlf::datastream::EventStream e2(event_uint2, "Event 3");
-
-
-
-void setup() {
     Serial.begin(115200);
     Serial.println("Open SD");
-    if (!SD_MMC.begin()) {
+    if (!SD_MMC.begin())
+    {
         Serial.println("Failed to open SD");
     }
 
-    Serial.println("Init streams");
-    dlf::datastream::streams_t streams;
+    Serial.printf("SD Initialized! Size: %lumb\n", SD_MMC.cardSize() / (1llu << 20));
 
-    streams.push_back(&p1);
-    streams.push_back(&p2);
-    streams.push_back(&e1);
-    streams.push_back(&e2);
-
-    struct {
-        int test = 1;
-    } meta;
-
-    Serial.printf("Run begin! Heap: %u\n", heap_caps_get_free_size(MALLOC_CAP_DEFAULT));
-    dlf::Run run(SD_MMC, streams, std::chrono::milliseconds(10), meta);
-
-    delay(2500);
-    Serial.println("Modifying event stream 1!");
-    event_uint = 0x02;
-
-    delay(2500);
-    Serial.println("Modifying event stream 2!");
-    event_uint2 = 0x20;
-
-    delay(5000);
-    run.close();
-
-    Serial.printf("Run done! Heap: %u\n", heap_caps_get_free_size(MALLOC_CAP_DEFAULT));
+    logger
+        .poll(led_state, "led_poll", seconds(1))
+        .watch(led_state, "led_event");
+    
+    run = logger.start_run(0);
+    start = millis();
 }
 
-void loop() {
+
+CRGB blink_color = CRGB::Red;
+void loop()
+{
+    leds[0] = blink_color;
+    FastLED.show();
+    led_state = true;
+    delay(1000); // wait for a second
+
+    leds[0] = CRGB::Black;
+    FastLED.show();
+    led_state = false;
+    delay(1000); // wait for a second
+
+    if(millis() - start > 5000 && run) {
+        Serial.println("Stopping run!!!!!");
+        blink_color = CRGB::Green; 
+        logger.stop_run(run);
+        run = 0;
+    }
 }
