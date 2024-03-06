@@ -1,8 +1,0 @@
-{
-  "label": "Runs",
-  "position": 2,
-  "link": {
-    "type": "generated-index",
-    "description": "How DLFLib's data is stored"
-  }
-}
