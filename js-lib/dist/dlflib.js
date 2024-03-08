@@ -1,7 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.HTTPAdapter = exports.Adapter = exports.LogClient = void 0;
-const lightstruct_1 = require("lightstruct");
 const dlfTypes_1 = require("./dlfTypes");
 /**
  * Creates an adapter to a remote, hosted, DLF Logfile
@@ -11,6 +10,10 @@ class LogClient {
     }
 }
 exports.LogClient = LogClient;
+class EventInterface {
+}
+class PolledInterface {
+}
 class Adapter {
     constructor(type_parsers) {
         this._type_parsers = type_parsers;
@@ -21,33 +24,49 @@ class Adapter {
     }
     async meta(meta_parsers) {
         const [metaHeader, metaHeaderSize] = await this.meta_header();
+        // Select user-defined metadata parser based on application string
         const parser = meta_parsers[metaHeader.application];
         if (!parser)
             return null;
-        return parser.read(await this.meta_dlf, dlfTypes_1.dlf_meta_header_t[lightstruct_1._minSize]());
+        return parser.read(await this.meta_dlf, dlfTypes_1.dlf_meta_header_t.minSize);
     }
     async polled_header() {
-        return dlfTypes_1.polled_logfile_header_t.read(await this.polled_dlf);
+        let polledDataFile = await this.polled_dlf;
+        return dlfTypes_1.polled_logfile_header_t.read(polledDataFile);
     }
     async events_header() {
-        return dlfTypes_1.event_logfile_header_t.read(await this.events_dlf);
+        let eventDataFile = await this.events_dlf;
+        return dlfTypes_1.event_logfile_header_t.read(eventDataFile);
     }
     async events_data() {
         let [header, header_len] = await this.events_header();
-        const abuf = await this.events_dlf;
-        let blen = abuf.byteLength;
-        for (let i = header_len; i < blen;) {
-            const [sampleHeader, sampleHeaderLen] = dlfTypes_1.dlf_event_stream_sample_t.read(abuf, i);
+        if (header == null)
+            throw new Error(header_len);
+        let totalData = Object.fromEntries(header.streams.map(v => [v.id, []]));
+        const dataFile = await this.events_dlf;
+        let dataFileLen = dataFile.byteLength;
+        for (let i = header_len; i < dataFileLen;) {
+            const [sampleHeader, sampleHeaderLen] = dlfTypes_1.dlf_event_stream_sample_t.read(dataFile, i);
+            if (!sampleHeader)
+                throw new Error(sampleHeaderLen);
             i += sampleHeaderLen;
-            const streamHeader = header.streams[sampleHeader.stream];
-            const dataParser = this._type_parsers[streamHeader.type_id];
-            const [data, dataLen] = dataParser.read(abuf, i);
-            i += dataLen;
-            console.log(sampleHeader, data);
+            // Select appropriate stream header based on sample's stream field
+            const sampleStreamHeader = header.streams[sampleHeader.stream];
+            const dataParser = this._type_parsers[sampleStreamHeader.type_id];
+            if (dataParser) {
+                const [data, dataLen] = dataParser.read(dataFile, i);
+                totalData[sampleStreamHeader.id].push({ tick: sampleHeader.sample_tick, data });
+                i += dataLen;
+            }
+            else {
+                i += sampleStreamHeader.type_size;
+            }
         }
+        return totalData;
     }
     async polled_data(downsample = 1n) {
         let [header, headerLen] = (await this.polled_header());
+        let data = Object.fromEntries(header.streams.map(v => [v.id, []]));
         const abuf = await this.polled_dlf;
         let blen = abuf.byteLength;
         for (let i = headerLen, t = 0n; i < blen; t += downsample) {
@@ -56,7 +75,8 @@ class Adapter {
                     continue;
                 let tParser = this._type_parsers[stream.type_id];
                 if (tParser) {
-                    let [value, size] = tParser.read();
+                    let [value, size] = tParser.read(abuf, i);
+                    data[stream.id].push({ tick: t, data: value });
                 }
                 else {
                     console.warn("Unknown datatype found");
@@ -64,6 +84,10 @@ class Adapter {
                 i += stream.type_size;
             }
         }
+        return data;
+    }
+    async data() {
+        return Object.assign({}, await this.polled_data(), await this.events_data());
     }
 }
 exports.Adapter = Adapter;

@@ -142,4 +142,6 @@ test("data headers", async () => {
 
 
     console.log(await a.events_data())
+    console.log(await a.data())
+
 });
