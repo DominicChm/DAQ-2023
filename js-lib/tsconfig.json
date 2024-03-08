@@ -7,6 +7,6 @@
     "skipLibCheck": true
   },
   "include": [
-    "src/**/*", "../webv2/src/dlflib-js/dlfTypes.ts", "../webv2/src/dlflib-js/index.ts", "../webv2/src/dlflib-js/dlflib.ts",
+    "src/**/*",
   ]
 }
