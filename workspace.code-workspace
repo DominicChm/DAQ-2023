@@ -17,6 +17,9 @@
 		},
 		{
 			"path": "sql-ingester"
+		},
+		{
+			"path": "kaitai"
 		}
 	],
 	"settings": {
