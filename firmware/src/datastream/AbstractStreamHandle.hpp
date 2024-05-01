@@ -1,14 +1,17 @@
 #pragma once
 
-#include "AbstractStream.hpp"
+#include <Arduino.h>
 #include <freertos/stream_buffer.h>
+
+#include "AbstractStream.hpp"
+#include <dlf_type_strings.h>
 
 namespace dlf::datastream {
 
 /**
  * @brief Provides access to the stream of data underlying an AbstractStream
- * 
- * Provides utilities for reading and encoding data at proper intervals into 
+ *
+ * Provides utilities for reading and encoding data at proper intervals into
  * the formats defined by concrete classes.
  */
 class AbstractStreamHandle {
@@ -23,11 +26,35 @@ class AbstractStreamHandle {
 
     virtual size_t encode_into(StreamBufferHandle_t buf, dlf_tick_t tick) = 0;
 
-    virtual size_t encode_header_into(StreamBufferHandle_t buf) = 0;
+    virtual size_t encode_header_into(StreamBufferHandle_t buf) {
+
+        dlf_stream_header_t h{
+            stream->type_id.c_str(),
+            stream->type_structure.c_str(),
+            stream->id.c_str(),
+            "Notes...",
+            stream->data_size(),
+        };
+        
+        send(buf, h.type_id);
+        send(buf, h.type_structure);
+        send(buf, h.id);
+        send(buf, h.notes);
+        send(buf, h.type_size);
+        return 1;
+    }
+
+    template <typename T>
+    size_t send(StreamBufferHandle_t buf, T data) {
+        return xStreamBufferSend(buf, reinterpret_cast<uint8_t *>(&data), sizeof(T), portMAX_DELAY);
+    }
+
+    size_t send(StreamBufferHandle_t buf, const char* data) {
+        return xStreamBufferSend(buf, data, strlen(data) + 1, portMAX_DELAY);
+    }
 };
 
 }  // namespace dlf::datastream
 
 typedef std::unique_ptr<dlf::datastream::AbstractStreamHandle> stream_handle_t;
 typedef std::vector<std::unique_ptr<dlf::datastream::AbstractStreamHandle>> stream_handles_t;
-

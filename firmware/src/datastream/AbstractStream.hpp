@@ -6,6 +6,7 @@
 #include <chrono>
 #include <memory>
 #include <vector>
+#include <dlf_type_strings.h>
 
 #include "../dlf_cfg.h"
 #include "../dlf_types.h"
@@ -40,11 +41,18 @@ class AbstractStream {
     template <typename T>
     AbstractStream(T &dat, String id, const char *type_id = characteristic_type_name<T>())
         : _data_size(sizeof(T)), _data_source(reinterpret_cast<uint8_t *>(&dat)), id(id), type_id(type_id) {
+        type_structure = "NO STRUCTURE FOUND";
+
+        type_hash = hash_str(type_id);
+        if (struct_strings.count(type_hash) > 0)
+            type_structure = struct_strings.at(type_hash);
     }
 
    public:
     String id;
     String type_id;
+    String type_structure;
+    int type_hash;
 
     /**
      * @brief Creates a new, linked StreamHandle

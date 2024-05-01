@@ -24,23 +24,23 @@ size_t PolledStreamHandle::encode_header_into(StreamBufferHandle_t buf) {
     DEBUG.printf(
         "\tEncode Polled Header\n"
         "\t\tidx: %d\n"
-        "\t\ttype_id: %s\n"
+        "\t\ttype_id: %s (hash: %x)\n"
+        "\t\ttype_structure: %s\n"
         "\t\tid: %s\n"
         "\t\ttick_interval: %u\n"
         "\t\ttick_phase: %u\n"
         "\t\tnotes: TODO\n",
-        idx, stream->type_id.c_str(), stream->id.c_str(), _sample_interval_ticks, _sample_phase_ticks);
+        idx, stream->type_id.c_str(), stream->type_hash, stream->type_structure.c_str(), stream->id.c_str(), _sample_interval_ticks, _sample_phase_ticks);
 #endif
-    dlf_polled_stream_header_t h;
-    strlcpy(h.type_id, stream->type_id.c_str(), sizeof(h.type_id));
-    strlcpy(h.id, stream->id.c_str(), sizeof(h.type_id));
-    strlcpy(h.notes, "NOTES....", sizeof(h.type_id));
-    h.type_size = stream->data_size();
-    h.tick_interval = _sample_interval_ticks;
-    h.tick_phase = _sample_phase_ticks;
 
-    xStreamBufferSend(buf, &h, sizeof(h), portMAX_DELAY);
-    return 0;
+    AbstractStreamHandle::encode_header_into(buf);
+    
+    dlf_polled_stream_header_segment_t h {
+        _sample_interval_ticks,
+        _sample_phase_ticks,
+    };
+
+    return send(buf, h);
 }
 
 size_t PolledStreamHandle::encode_into(StreamBufferHandle_t buf, dlf_tick_t tick) {

@@ -33,18 +33,14 @@ size_t EventStreamHandle::encode_header_into(StreamBufferHandle_t buf) {
     DEBUG.printf(
         "\tEncode Event Header\n"
         "\t\tidx: %d\n"
-        "\t\ttype_id: %s\n"
+        "\t\ttype_id: %s (hash: %x)\n"
+        "\t\ttype_structure: %s\n"
         "\t\tid: %s\n"
         "\t\tnotes: TODO\n",
-        idx, stream->type_id.c_str(), stream->id.c_str());
+        idx, stream->type_id.c_str(), hash_str(stream->type_id.c_str()), stream->type_structure.c_str(), stream->id.c_str());
 #endif
-    dlf_event_stream_header_t h;
-    strlcpy(h.type_id, stream->type_id.c_str(), sizeof(h.type_id));
-    strlcpy(h.id, stream->id.c_str(), sizeof(h.type_id));
-    strlcpy(h.notes, "NOTES....", sizeof(h.type_id));
-    h.type_size = stream->data_size();
 
-    return xStreamBufferSend(buf, &h, sizeof(h), portMAX_DELAY);
+    return AbstractStreamHandle::encode_header_into(buf);
 }
 
 // FIXME: High possibility of overrunning streambuffer on initial tick (where all events are written)

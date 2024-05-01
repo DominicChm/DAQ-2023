@@ -79,7 +79,7 @@ public:
     {
         using namespace dlf::datastream;
 
-        AbstractStream *s = new EventStream(value, "Polled 1");
+        AbstractStream *s = new EventStream(value, id);
         data_streams.push_back(s);
         
         return *this;
@@ -90,7 +90,7 @@ public:
     {
         using namespace dlf::datastream;
 
-        AbstractStream *s = new PolledStream(value, "Polled 1", std::chrono::seconds(1));
+        AbstractStream *s = new PolledStream(value, id, sample_interval, phase);
         data_streams.push_back(s);
 
         return *this;

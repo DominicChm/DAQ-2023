@@ -1,3 +1,4 @@
+// https://stackoverflow.com/questions/73340921/how-to-visualize-layout-of-c-struct-class
 #include <Arduino.h>
 #include <dlf_logger.h>
 #include <SD_MMC.h>
@@ -13,12 +14,23 @@ CSCLogger logger(SD_MMC);
 
 CRGB leds[3];
 
+
+struct LMAO {
+    uint8_t lel;
+};
+
 template <uint8_t DATA_PIN, EOrder RGB_ORDER = GRB>
 class IN_PI42TAS : public ClocklessController<DATA_PIN, C_NS(300), C_NS(600), C_NS(200), RGB_ORDER, 4> {};
 
-
+LMAO l;
 long start = millis();
 run_handle_t run;
+
+struct a_struct {
+    uint8_t a1;
+    uint8_t a2;
+} test;
+
 void setup()
 {
     FastLED.addLeds<IN_PI42TAS, PIN_ARGB, GRB>(leds, 3);
@@ -34,7 +46,9 @@ void setup()
 
     logger
         .poll(led_state, "led_poll", seconds(1))
-        .watch(led_state, "led_event");
+        .watch(led_state, "led_event")
+        .watch(start, "start_time")
+        .watch(test, "Test struct");
     
     run = logger.start_run(0);
     start = millis();

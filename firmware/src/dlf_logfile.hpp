@@ -52,7 +52,7 @@ class LogFile {
      *
      * Uses existing streambuffer architecture because why not.
      */
-    void _write_header(dlf_stream_type_e stream_type) {
+    void _write_header(dlf_stream_type_e stream_type) {        
         dlf_logfile_header_t h;
         h.stream_type = stream_type;
         h.num_streams = _handles.size();
@@ -132,6 +132,7 @@ class LogFile {
 
     /**
      * @brief Task responsible for writing data to SD
+     * Constantly receives data from _stream streambuffer and writes to SD.
      * @param arg
      */
     static void task_flusher(void *arg) {
