@@ -76,7 +76,16 @@
 			"streambuf": "cpp",
 			"thread": "cpp",
 			"cinttypes": "cpp",
-			"*.bak": "c"
+			"*.bak": "c",
+			"charconv": "cpp",
+			"complex": "cpp",
+			"csetjmp": "cpp",
+			"forward_list": "cpp",
+			"list": "cpp",
+			"set": "cpp",
+			"source_location": "cpp",
+			"iostream": "cpp",
+			"variant": "cpp"
 		}
 	}
 }

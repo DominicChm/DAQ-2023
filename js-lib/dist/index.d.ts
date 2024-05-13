@@ -1,2 +1,1 @@
-export * from "./dlfTypes";
-export * from "./dlflib";
+export * from "./dlflib.js";

@@ -21,6 +21,8 @@
   },
   "type": "module",
   "dependencies": {
-    "lightstruct": "file:../../lightstruct"
+    "@types/binary-parser": "^1.5.4",
+    "@types/node": "^20.12.7",
+    "binary-parser": "github:DominicChm/binary-parser#master"
   }
 }

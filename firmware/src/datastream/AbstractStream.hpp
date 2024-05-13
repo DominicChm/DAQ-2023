@@ -44,8 +44,7 @@ class AbstractStream {
         type_structure = "NO STRUCTURE FOUND";
 
         type_hash = hash_str(type_id);
-        if (struct_strings.count(type_hash) > 0)
-            type_structure = struct_strings.at(type_hash);
+        type_structure = get_structure_from_type_id(type_id);
     }
 
    public:

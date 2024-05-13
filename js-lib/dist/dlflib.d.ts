@@ -1,60 +1,88 @@
-import { cType, readResult } from "lightstruct";
-import { dlf_meta_header_jst } from "./dlfTypes";
+/// <reference types="node" resolution-mode="require"/>
+import { Parser } from "binary-parser";
 /**
  * Creates an adapter to a remote, hosted, DLF Logfile
  */
 export declare class LogClient {
     constructor(adapter: Adapter);
 }
+type Tlogfile_header_t = {
+    magic: number;
+    stream_type: number;
+    tick_span: BigInt;
+    num_streams: number;
+    streams: {
+        type_id: string;
+        type_structure: string;
+        id: string;
+        notes: string;
+        type_size: number;
+        stream_info: {
+            tick_interval: number;
+            tick_phase: number;
+        } | {};
+    }[];
+    data: Uint8Array;
+};
 export declare abstract class Adapter {
-    _type_parsers: any;
-    abstract get polled_dlf(): Promise<ArrayBuffer>;
-    abstract get events_dlf(): Promise<ArrayBuffer>;
-    abstract get meta_dlf(): Promise<ArrayBuffer>;
-    constructor(type_parsers: any);
+    abstract get polled_dlf(): Promise<Uint8Array>;
+    abstract get events_dlf(): Promise<Uint8Array>;
+    abstract get meta_dlf(): Promise<Uint8Array>;
+    create_parser(structure: string, structure_size?: number): Parser;
     /** From metafile **/
-    meta_header(): Promise<readResult<dlf_meta_header_jst>>;
-    meta<T>(meta_parsers: {
-        [key: string]: cType<any>;
-    }): Promise<readResult<T> | null>;
-    polled_header(): Promise<readResult<{
-        streams: import("lightstruct").OmitReferences<{
-            tick_interval: any;
-            tick_phase: any;
-        } & {
-            type_id: any;
-            id: any;
-            notes: any;
-            type_size: any;
-        }>[];
-    } & {
+    meta_header(): Promise<{
         magic: number;
-        stream_type: number;
-        tick_span: bigint;
-        num_streams: import("lightstruct").cTypeLengthReference;
-    }>>;
-    events_header(): Promise<readResult<{
-        streams: import("lightstruct").OmitReferences<{
-            type_id: any;
-            id: any;
-            notes: any;
-            type_size: any;
-        }>[];
     } & {
-        magic: number;
-        stream_type: number;
-        tick_span: bigint;
-        num_streams: import("lightstruct").cTypeLengthReference;
-    }>>;
-    events_data(): Promise<{
-        [k: string]: any[];
+        tick_base_us: number;
+    } & {
+        meta_id: string;
+    } & {
+        meta_structure: string;
+    } & {
+        meta_size: number;
+    } & {
+        meta: Buffer;
     }>;
+    meta(): Promise<{}>;
+    polled_header(): Promise<Tlogfile_header_t>;
+    events_header(): Promise<Tlogfile_header_t>;
+    events_data(): Promise<{
+        stream: {
+            type_id: string;
+            type_structure: string;
+            id: string;
+            notes: string;
+            type_size: number;
+            stream_info: {} | {
+                tick_interval: number;
+                tick_phase: number;
+            };
+        };
+        stream_idx: number;
+        tick: bigint;
+        data: never;
+    }[]>;
     polled_data(downsample?: bigint): Promise<{
-        [k: string]: any[];
+        [k: string]: any;
     }>;
     data(): Promise<{
-        [k: string]: any[];
-    }>;
+        [k: string]: any;
+    } & {
+        stream: {
+            type_id: string;
+            type_structure: string;
+            id: string;
+            notes: string;
+            type_size: number;
+            stream_info: {} | {
+                tick_interval: number;
+                tick_phase: number;
+            };
+        };
+        stream_idx: number;
+        tick: bigint;
+        data: never;
+    }[]>;
 }
 /**
  * Todo.
@@ -70,3 +98,4 @@ export declare class HTTPAdapter extends Adapter {
     get events_dlf(): Promise<ArrayBuffer>;
     get meta_dlf(): Promise<ArrayBuffer>;
 }
+export {};

@@ -61,27 +61,38 @@ class Run {
 
     template <typename T>
     void create_metafile(T &meta) {
+        dlf_meta_header_t h;
+        h.tick_base_us = _tick_interval.count();
+        h.meta_id = characteristic_type_name<T>();
+        h.meta_structure = get_structure<T>();
+        h.meta_size = sizeof(T);
+
 #ifdef DEBUG
-        DEBUG.print("Creating metafile... ");
+        DEBUG.printf(
+            "Creating metafile\n"
+            "\ttick_base_us: %lu\n"
+            "\tmeta_id: %s (hash: %x)\n"
+            "\tmeta_structure: %s\n",
+            h.tick_base_us, h.meta_id, hash_str(h.meta_id), h.meta_structure);
 #endif
         File f = _fs.open(_uuid + "/meta.dlf", "w", true);
 
-        dlf_meta_header_t h;
-        h.tick_base_us = _tick_interval.count();
-        strlcpy(h.application, "TESTAPP", sizeof(h.application));
-        h.meta_size = sizeof(T);
-
-        f.write(reinterpret_cast<uint8_t *>(&h), sizeof(h));
+        // Directly write metadata into the file. No need to
+        // use a streambuffer like in Logfile metadata writes
+        // TODO: clean this up
+        f.write(reinterpret_cast<uint8_t *>(&h.magic), sizeof(h.magic));
+        f.write(reinterpret_cast<uint8_t *>(&h.tick_base_us), sizeof(h.tick_base_us));
+        f.write((uint8_t *)h.meta_id, strlen(h.meta_id) + 1);
+        f.write((uint8_t *)h.meta_structure, strlen(h.meta_structure) + 1);
+        f.write(reinterpret_cast<uint8_t *>(&h.meta_size), sizeof(h.meta_size));
         f.write(reinterpret_cast<uint8_t *>(&meta), sizeof(T));
+
         f.close();
-#ifdef DEBUG
-        DEBUG.print("Done!\n");
-#endif
     }
 
     void create_logfile_for(dlf_stream_type_e t) {
 #ifdef DEBUG
-        DEBUG.printf("Creating %s logfile", stream_type_to_string(t));
+        DEBUG.printf("Creating %s logfile\n", stream_type_to_string(t));
 #endif
         stream_handles_t handles;
 
@@ -106,7 +117,7 @@ class Run {
         const TickType_t interval = chrono::duration_cast<DLF_FREERTOS_DURATION>(self->_tick_interval).count();
         Serial.printf("Interval %d\n", interval);
 
-        TickType_t prev_run;
+        TickType_t prev_run = xTaskGetTickCount();
 
         // Run at constant tick interval
         for (dlf_tick_t tick = 0; self->_status == LOGGING; tick++) {

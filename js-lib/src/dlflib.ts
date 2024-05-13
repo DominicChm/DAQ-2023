@@ -1,93 +1,194 @@
-import { cType, readResult } from "lightstruct"
-import { dlf_event_stream_sample_t, dlf_meta_header_jst, dlf_meta_header_t, event_logfile_header_t, polled_logfile_header_t } from "./dlfTypes"
+import { Parser } from "binary-parser"
 
 /**
  * Creates an adapter to a remote, hosted, DLF Logfile 
  */
 export class LogClient {
     constructor(adapter: Adapter) {
-
     }
 }
 
-class EventInterface {
-
+let binary_parsers_primitives = {
+    "uint8_t": "uint8",
+    "bool": "uint8",
+    "uint16_t": "uint16le",
+    "uint32_t": "uint32le",
+    "uint64_t": "uint64le",
+    "int8_t": "int8",
+    "int16_t": "int16le",
+    "int32_t": "int32le",
+    "int64_t": "int64le",
+    "float": "floatle",
+    "double": "doublele",
 }
 
-class PolledInterface {
+const meta_header_t = new Parser()
+    .endianness("little")
+    .uint16("magic")
+    .uint32("tick_base_us")
+    .string("meta_id", { zeroTerminated: true })
+    .string("meta_structure", { zeroTerminated: true })
+    .uint32("meta_size")
+    .buffer("meta", { readUntil: "eof" });
 
+
+type Tlogfile_header_t = {
+    magic: number,
+    stream_type: number,
+    tick_span: BigInt,
+    num_streams: number,
+    streams: {
+        type_id: string,
+        type_structure: string,
+        id: string,
+        notes: string,
+        type_size: number,
+        stream_info: {
+            tick_interval: number,
+            tick_phase: number,
+        } | {}
+    }[],
+    data: Uint8Array
 }
+
+const logfile_header_t = new Parser()
+    // @ts-ignore
+    .useContextVars()
+    .endianness("little")
+    .uint16("magic")
+    .uint8("stream_type")
+    .uint64("tick_span")
+    .uint16("num_streams")
+    .array("streams", {
+        length: "num_streams",
+        type: new Parser()
+            .string("type_id", { zeroTerminated: true })
+            .string("type_structure", { zeroTerminated: true })
+            .string("id", { zeroTerminated: true })
+            .string("notes", { zeroTerminated: true })
+            .uint32le("type_size")
+            .choice("stream_info", {
+                // @ts-ignore
+                tag: function () { return this.$root.stream_type },
+                choices: {
+                    0: new Parser()
+                        .uint32le("tick_interval")
+                        .uint32le("tick_phase"), // polled
+                    1: new Parser(), // event
+                }
+            })
+    })
+    .buffer("data", { readUntil: "eof" })
+
 
 export abstract class Adapter {
-    _type_parsers;
+    abstract get polled_dlf(): Promise<Uint8Array>;
+    abstract get events_dlf(): Promise<Uint8Array>;
+    abstract get meta_dlf(): Promise<Uint8Array>;
 
-    abstract get polled_dlf(): Promise<ArrayBuffer>;
-    abstract get events_dlf(): Promise<ArrayBuffer>;
-    abstract get meta_dlf(): Promise<ArrayBuffer>;
+    create_parser(structure: string, structure_size?: number): Parser {
+        // No contained structure
+        if (structure.startsWith("!"))
+            return null
 
-    constructor(type_parsers) {
-        this._type_parsers = type_parsers;
+        if (binary_parsers_primitives[structure]) {
+            return binary_parsers_primitives[structure]
+        }
+
+        // Create parser
+        // name;member_1:primitive_type:offset;...
+        const [name, ...members] = structure.split(";");
+
+
+        let member_parser = new Parser()
+            .endianness("little")
+            .saveOffset("_____off")
+
+        for (const m of members) {
+            const [name, type_name, offset] = m.split(":");
+
+            const relOff = parseInt(offset)
+            const bin_parse_type = binary_parsers_primitives[type_name];
+
+            console.log("Member parser", name, bin_parse_type, relOff);
+
+            member_parser = member_parser
+                .pointer(name, {
+                    type: bin_parse_type, offset: function () {
+                        return this.off + relOff
+                    }
+                });
+
+
+            // member_parser = member_parser.pointer(name, { type: bin_parse_type, offset: off });
+        }
+
+        if (structure_size != null) {
+            member_parser = member_parser.seek(structure_size)
+        }
+
+        return member_parser
     }
 
     /** From metafile **/
-    async meta_header(): Promise<readResult<dlf_meta_header_jst>> {
-        return dlf_meta_header_t.read(await this.meta_dlf)
+    async meta_header() {
+        return meta_header_t.parse(await this.meta_dlf)
     }
 
-    async meta<T>(meta_parsers: { [key: string]: cType<any> }): Promise<readResult<T> | null> {
-        const [metaHeader, metaHeaderSize] = await this.meta_header()
+    async meta() {
+        const mh = await this.meta_header();
+        const meta_structure = mh.meta_structure;
+        const metadata = mh.meta;
 
-        // Select user-defined metadata parser based on application string
-        const parser = meta_parsers[metaHeader.application];
+        const parser = this.create_parser(meta_structure, mh.meta_size, null);
 
         if (!parser) return null;
 
-        return parser.read(await this.meta_dlf, dlf_meta_header_t.minSize)
+        return parser.parse(metadata)
     }
 
-    async polled_header() {
+    async polled_header(): Promise<Tlogfile_header_t> {
         let polledDataFile = await this.polled_dlf
-        return polled_logfile_header_t.read(polledDataFile)
+        return logfile_header_t.parse(polledDataFile)
     }
 
-    async events_header() {
+    async events_header(): Promise<Tlogfile_header_t> {
         let eventDataFile = await this.events_dlf;
-        return event_logfile_header_t.read(eventDataFile)
+        return logfile_header_t.parse(eventDataFile)
     }
 
     async events_data() {
-        let [header, header_len] = await this.events_header()
+        let header = await this.events_header()
 
-        if (header == null)
-            throw new Error(header_len as string);
-
-        let totalData = Object.fromEntries(header.streams.map(v => [v.id, []]));
-
-        const dataFile = await this.events_dlf;
-        let dataFileLen = dataFile.byteLength;
-
-        for (let i = header_len as number; i < dataFileLen;) {
-            const [sampleHeader, sampleHeaderLen] = dlf_event_stream_sample_t.read(dataFile, i);
-
-            if (!sampleHeader)
-                throw new Error(sampleHeaderLen as string);
-
-            i += sampleHeaderLen as number;
-
-            // Select appropriate stream header based on sample's stream field
-            const sampleStreamHeader = header.streams[sampleHeader.stream];
-
-            const dataParser = this._type_parsers[sampleStreamHeader.type_id];
-            if (dataParser) {
-                const [data, dataLen] = dataParser.read(dataFile, i);
-                totalData[sampleStreamHeader.id].push({ tick: sampleHeader.sample_tick, data });
-                i += dataLen;
-            } else {
-                i += sampleStreamHeader.type_size;
-            }
+        // Create choices
+        const choices = {};
+        for (const [i, stream] of header.streams.entries()) {
+            choices[i] = this.create_parser(stream.type_structure, stream.type_size, 10);
         }
 
-        return totalData
+
+        const file_parser = new Parser()
+            .array("data", {
+                readUntil: "eof",
+                type: new Parser()
+                    .uint16le("stream_idx")
+                    .uint64le("sample_tick")
+                    .choice("data", {
+                        tag: "stream_idx",
+                        choices
+                    })
+            });
+
+        const { data } = file_parser.parse(header.data);
+
+        const merged_data = data.map(({ stream_idx, sample_tick, data }) => ({
+            stream: header.streams[stream_idx],
+            stream_idx,
+            tick: sample_tick,
+            data,
+        }));
+
+        return merged_data
     }
 
     async polled_data(downsample = 1n) {
