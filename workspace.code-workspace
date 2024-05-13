@@ -86,6 +86,7 @@
 			"source_location": "cpp",
 			"iostream": "cpp",
 			"variant": "cpp"
-		}
+		},
+		"ros.distro": "foxy"
 	}
 }
