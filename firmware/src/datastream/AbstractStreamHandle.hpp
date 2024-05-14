@@ -29,8 +29,8 @@ class AbstractStreamHandle {
     virtual size_t encode_header_into(StreamBufferHandle_t buf) {
 
         dlf_stream_header_t h{
-            stream->type_id.c_str(),
-            stream->type_structure.c_str(),
+            stream->src.type_id,
+            stream->src.type_structure,
             stream->id.c_str(),
             "Notes...",
             stream->data_size(),

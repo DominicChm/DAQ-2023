@@ -37,7 +37,7 @@ size_t EventStreamHandle::encode_header_into(StreamBufferHandle_t buf) {
         "\t\ttype_structure: %s\n"
         "\t\tid: %s\n"
         "\t\tnotes: TODO\n",
-        idx, stream->type_id.c_str(), hash_str(stream->type_id.c_str()), stream->type_structure.c_str(), stream->id.c_str());
+        idx, stream->src.type_id, stream->src.type_hash, stream->src.type_structure, stream->id.c_str());
 #endif
 
     return AbstractStreamHandle::encode_header_into(buf);

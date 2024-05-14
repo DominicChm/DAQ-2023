@@ -29,8 +29,7 @@ class Run {
     vector<unique_ptr<LogFile>> _log_files;
 
    public:
-    template <typename T>
-    Run(FS &fs, streams_t all_streams, chrono::microseconds tick_interval, T &meta)
+    Run(FS &fs, streams_t all_streams, chrono::microseconds tick_interval, Encodable meta)
         : _fs(fs), _streams(all_streams), _tick_interval(tick_interval) {
         assert(tick_interval.count() > 0);
 
@@ -59,13 +58,12 @@ class Run {
         xTaskCreate(task_sampler, "Sampler", 4096 * 2, this, 5, NULL);
     }
 
-    template <typename T>
-    void create_metafile(T &meta) {
+    void create_metafile(Encodable meta) {
         dlf_meta_header_t h;
         h.tick_base_us = _tick_interval.count();
-        h.meta_id = characteristic_type_name<T>();
-        h.meta_structure = get_structure<T>();
-        h.meta_size = sizeof(T);
+        h.meta_id = meta.type_id;
+        h.meta_structure = meta.type_structure;
+        h.meta_size = meta.data_size;
 
 #ifdef DEBUG
         DEBUG.printf(
@@ -85,7 +83,7 @@ class Run {
         f.write((uint8_t *)h.meta_id, strlen(h.meta_id) + 1);
         f.write((uint8_t *)h.meta_structure, strlen(h.meta_structure) + 1);
         f.write(reinterpret_cast<uint8_t *>(&h.meta_size), sizeof(h.meta_size));
-        f.write(reinterpret_cast<uint8_t *>(&meta), sizeof(T));
+        f.write(reinterpret_cast<uint8_t *>(&meta), h.meta_size);
 
         f.close();
     }
@@ -104,6 +102,7 @@ class Run {
         }
         _log_files.push_back(unique_ptr<LogFile>(new LogFile(move(handles), t, _uuid, _fs)));
     }
+
 
     /**
      * NOTE: Has caused canary issues if stack too small (1024 is problematic).

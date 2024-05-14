@@ -5,7 +5,7 @@
 #ifndef UUID_GEN
 #define UUID_GEN
 // For a 32 bit int, returnVar must be of length 8 or greater.
-void IntToHex(const unsigned int inInt, char *returnVar)
+inline void IntToHex(const unsigned int inInt, char *returnVar)
 {
   const char *HEXMAP = "0123456789abcdef";
   for (int i = 0; i < 8; i++)
@@ -17,7 +17,7 @@ void IntToHex(const unsigned int inInt, char *returnVar)
 
 // returnUUID must be of length 37 or greater
 // (For the null terminator)
-void UUIDGen(char *returnUUID)
+inline void UUIDGen(char *returnUUID)
 {
   for (int i = 0; i < 4; i++)
   {
@@ -53,7 +53,7 @@ void UUIDGen(char *returnUUID)
   returnUUID[36] = 0;
 }
 
-String StringUUIDGen()
+inline String StringUUIDGen()
 {
   char returnUUID[37];
   UUIDGen(returnUUID);

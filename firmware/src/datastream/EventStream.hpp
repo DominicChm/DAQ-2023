@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include "dlf_encodable.h"
 
 #include "AbstractStream.hpp"
 
@@ -14,9 +15,7 @@ namespace dlf::datastream {
  */
 class EventStream : public AbstractStream {
    public:
-    template <typename T>
-    EventStream(T &dat, String id) : AbstractStream(dat, id) {
-    }
+    EventStream(Encodable dat, String id);
 
     stream_handle_t handle(microseconds tick_interval, dlf_stream_idx_t idx);
     

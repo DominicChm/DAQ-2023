@@ -6,7 +6,7 @@
 #define member_sizeof(type, member) sizeof(((type *)0)->member)
 
 // https://stackoverflow.com/a/59522794/16238567
-inline constexpr unsigned int hash_str(const char *s, int off = 0) {
+inline constexpr size_t hash_str(const char *s, int off = 0) {
     return !s[off] ? 5381 : (hash_str(s, off + 1) * 33) ^ s[off];
 }
 

@@ -16,10 +16,7 @@ class PolledStream : public AbstractStream {
     microseconds _phase_us;
 
    public:
-    template <typename T>
-    PolledStream(T &dat, String id, microseconds sample_interval, microseconds phase = std::chrono::microseconds::zero())
-        : AbstractStream(dat, id), _sample_interval_us(sample_interval), _phase_us(phase) {
-    }
+    PolledStream(Encodable src, String id, microseconds sample_interval, microseconds phase = std::chrono::microseconds::zero());
 
     stream_handle_t handle(microseconds tick_interval, dlf_stream_idx_t idx);
 

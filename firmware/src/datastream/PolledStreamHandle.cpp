@@ -30,7 +30,7 @@ size_t PolledStreamHandle::encode_header_into(StreamBufferHandle_t buf) {
         "\t\ttick_interval: %u\n"
         "\t\ttick_phase: %u\n"
         "\t\tnotes: TODO\n",
-        idx, stream->type_id.c_str(), stream->type_hash, stream->type_structure.c_str(), stream->id.c_str(), _sample_interval_ticks, _sample_phase_ticks);
+        idx, stream->src.type_id, stream->src.type_hash, stream->src.type_structure, stream->id.c_str(), _sample_interval_ticks, _sample_phase_ticks);
 #endif
 
     AbstractStreamHandle::encode_header_into(buf);

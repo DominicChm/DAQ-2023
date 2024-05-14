@@ -5,6 +5,9 @@
 #include "dlf_run.h"
 #include "dlf_logfile.hpp"
 #include "dlf_types.h"
+#include "datastream/EventStream.hpp"
+#include "datastream/PolledStream.hpp"
+#include <chrono>
 
 #define INDEX_FILE_PATH "/__INDEX"
 #define BLOCK_SIZE 512
@@ -19,6 +22,9 @@ typedef int run_handle_t;
 
 class CSCLogger
 {
+    typedef std::chrono::microseconds microseconds;
+    typedef std::chrono::milliseconds milliseconds;
+
     std::unique_ptr<dlf::Run> runs[MAX_RUNS];
 
     // Todo: Figure out how to do this with unique_ptrs
@@ -28,65 +34,40 @@ class CSCLogger
     String fs_dir;
 
 public:
+    struct
+    {
+        uint8_t lel;
+    } components;
+
     CSCLogger(FS &fs, String fs_dir = "/") : _fs(fs), fs_dir(fs_dir)
     {
     }
 
-    run_handle_t get_available_handle()
-    {
-        for (size_t i = 0; i < MAX_RUNS; i++)
-        {
-            if (!runs[i])
-                return i + 1;
-        }
+    run_handle_t get_available_handle();
 
-        return 0;
-    }
+    run_handle_t start_run(Encodable meta, microseconds tick_rate = milliseconds(100));
 
     template <typename meta_t>
-    run_handle_t start_run(meta_t meta, std::chrono::microseconds tick_rate = std::chrono::milliseconds(100))
+    run_handle_t start_run(meta_t meta, microseconds tick_rate = milliseconds(100))
     {
-        run_handle_t h = get_available_handle();
-
-        // If 0, out of space.
-        if (!h)
-            return h;
-
-        Serial.printf("Starting logging with a cycle time-base of %dms\n", tick_rate);
-
-        // Initialize new run
-        dlf::Run *run = new dlf::Run(_fs, data_streams, tick_rate, meta);
-
-        if(run == NULL)
-            return 0;
-
-        runs[h - 1] = std::unique_ptr<dlf::Run>(run);
-
-        return h;
+        return start_run(Encodable(meta), tick_rate);
     }
 
-    void stop_run(run_handle_t h)
-    {
-        if (!runs[h - 1])
-            return;
-
-        runs[h - 1]->close();
-        runs[h - 1].reset();
-    }
+    void stop_run(run_handle_t h);
 
     template <typename T>
-    CSCLogger &watch(T& value, String id)
+    CSCLogger &watch(T &value, String id)
     {
         using namespace dlf::datastream;
 
         AbstractStream *s = new EventStream(value, id);
         data_streams.push_back(s);
-        
+
         return *this;
     }
 
     template <typename T>
-    CSCLogger &poll(T& value, String id, microseconds sample_interval, microseconds phase = std::chrono::microseconds::zero())
+    CSCLogger &poll(T &value, String id, microseconds sample_interval, microseconds phase = microseconds::zero())
     {
         using namespace dlf::datastream;
 
