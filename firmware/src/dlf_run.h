@@ -29,7 +29,7 @@ class Run {
     vector<unique_ptr<LogFile>> _log_files;
 
    public:
-    Run(FS &fs, streams_t all_streams, chrono::microseconds tick_interval, Encodable meta)
+    Run(FS &fs, streams_t all_streams, chrono::microseconds tick_interval, Encodable &meta)
         : _fs(fs), _streams(all_streams), _tick_interval(tick_interval) {
         assert(tick_interval.count() > 0);
 
@@ -58,7 +58,7 @@ class Run {
         xTaskCreate(task_sampler, "Sampler", 4096 * 2, this, 5, NULL);
     }
 
-    void create_metafile(Encodable meta) {
+    void create_metafile(Encodable &meta) {
         dlf_meta_header_t h;
         h.tick_base_us = _tick_interval.count();
         h.meta_id = meta.type_id;
@@ -102,7 +102,6 @@ class Run {
         }
         _log_files.push_back(unique_ptr<LogFile>(new LogFile(move(handles), t, _uuid, _fs)));
     }
-
 
     /**
      * NOTE: Has caused canary issues if stack too small (1024 is problematic).

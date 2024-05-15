@@ -47,12 +47,6 @@ public:
 
     run_handle_t start_run(Encodable meta, microseconds tick_rate = milliseconds(100));
 
-    template <typename meta_t>
-    run_handle_t start_run(meta_t meta, microseconds tick_rate = milliseconds(100))
-    {
-        return start_run(Encodable(meta), tick_rate);
-    }
-
     void stop_run(run_handle_t h);
 
     template <typename T>
