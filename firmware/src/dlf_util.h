@@ -37,6 +37,11 @@ inline constexpr const char *characteristic_type_name() {
     return t<T>();
 }
 
+template <typename T>
+inline constexpr size_t hash_type() {
+    return hash_str(t<T>());
+}
+
 /**
  * Copies a string to heap-allocated memory, and sets the passed pointer to said memory.
  * If heap memory already exists at str_dest, it is realloced.

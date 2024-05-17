@@ -4,8 +4,6 @@
 #include <SD_MMC.h>
 #include <TinyGPSPlus.h>
 #include <dlf_logger.h>
-#include <dlf_sync.h>
-#include <dlf_wifi_client.h>
 
 #define PIN_ARGB 26
 #define PIN_LOGSW 32
@@ -18,8 +16,6 @@ using std::chrono::seconds;
 TinyGPSPlus gps;
 
 CSCLogger logger(SD_MMC);
-CSCWifiClient wifi("test_net", "12345678");
-CSCDBSynchronizer synchro("10.160.1.167", SD_MMC);
 
 struct GPSPos {
     double lat;
@@ -34,8 +30,9 @@ CRGB leds[3];
 template <uint8_t DATA_PIN, EOrder RGB_ORDER = GRB>
 class IN_PI42TAS : public ClocklessController<DATA_PIN, C_NS(300), C_NS(600), C_NS(200), RGB_ORDER, 4> {};
 
-
 void setup() {
+    pinMode(PIN_LOGSW, INPUT_PULLUP);
+
     FastLED.addLeds<IN_PI42TAS, PIN_ARGB, GRB>(leds, 3);
     FastLED.setBrightness(5);
 
@@ -61,19 +58,20 @@ void setup() {
     Serial.printf("SD Initialized! Size: %lumb\n", SD_MMC.cardSize() / (1llu << 20));
 
     // Setup logger to log GPS position struct
+    logger.watch(pos, "GPSPos");
+
+    // Setup synchronization
     logger
-        .watch(pos, "GPSPos");
+        .wifi("test_net", "12345678")
+        .syncTo("10.160.1.167", 8080);
 
+    logger.begin();
 
-    // Setup synchronization if booted with mode switch enabled
-    pinMode(PIN_LOGSW, INPUT_PULLUP);
-    if (!digitalRead(PIN_LOGSW)) {
-        wifi.begin();
-        synchro.begin();
-        FastLED.showColor(CRGB::Green);
-        while (!digitalRead(PIN_LOGSW))
-            delay(100);
-    }
+    // Wait for switch to be disabled
+    while (!digitalRead(PIN_LOGSW))
+        FastLED.showColor(CRGB::FairyLight);
+        delay(100);
+
     FastLED.showColor(CRGB::Yellow);
 }
 

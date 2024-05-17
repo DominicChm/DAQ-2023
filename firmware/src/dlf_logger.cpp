@@ -1,9 +1,16 @@
 #include "dlf_logger.h"
 
-run_handle_t CSCLogger::get_available_handle()
-{
-    for (size_t i = 0; i < MAX_RUNS; i++)
-    {
+#include "components/dlf_sync.h"
+#include "components/dlf_wifi.h"
+
+CSCLogger::CSCLogger(FS &fs, String fs_dir) : _fs(fs), fs_dir(fs_dir) {
+    ev = xEventGroupCreate();
+    this->setup(&components);
+    add_component(this);
+}
+
+run_handle_t CSCLogger::get_available_handle() {
+    for (size_t i = 0; i < MAX_RUNS; i++) {
         if (!runs[i])
             return i + 1;
     }
@@ -11,8 +18,13 @@ run_handle_t CSCLogger::get_available_handle()
     return 0;
 }
 
-run_handle_t CSCLogger::start_run(Encodable meta, std::chrono::microseconds tick_rate)
-{
+bool CSCLogger::run_is_active(const char *uuid) {
+    for (size_t i = 0; i < MAX_RUNS; i++)
+        if (runs[i] && !strcmp(runs[i]->uuid(), uuid)) return true;
+    return false;
+}
+
+run_handle_t CSCLogger::start_run(Encodable meta, std::chrono::microseconds tick_rate) {
     run_handle_t h = get_available_handle();
 
     // If 0, out of space.
@@ -32,11 +44,65 @@ run_handle_t CSCLogger::start_run(Encodable meta, std::chrono::microseconds tick
     return h;
 }
 
-void CSCLogger::stop_run(run_handle_t h)
-{
+void CSCLogger::stop_run(run_handle_t h) {
     if (!runs[h - 1])
         return;
 
     runs[h - 1]->close();
     runs[h - 1].reset();
+    xEventGroupSetBits(ev, NEW_RUN);
+}
+
+CSCLogger &CSCLogger::watch(Encodable value, String id) {
+    using namespace dlf::datastream;
+
+    AbstractStream *s = new EventStream(value, id);
+    data_streams.push_back(s);
+
+    return *this;
+}
+
+CSCLogger &CSCLogger::poll(Encodable value, String id, microseconds sample_interval, microseconds phase) {
+    using namespace dlf::datastream;
+
+    AbstractStream *s = new PolledStream(value, id, sample_interval, phase);
+    data_streams.push_back(s);
+
+    return *this;
+}
+
+CSCLogger &CSCLogger::syncTo(String server_ip, uint16_t port) {
+    if (!has_component<CSCDBSynchronizer>())
+        add_component(new CSCDBSynchronizer(_fs, fs_dir));
+
+    get_component<CSCDBSynchronizer>()->syncTo(server_ip, port);
+
+    return *this;
+}
+
+CSCLogger &CSCLogger::wifi(String ssid, String password) {
+    if (!has_component<CSCDBSynchronizer>())
+        add_component(new CSCWifiClient(ssid, password));
+
+    return *this;
+}
+
+bool CSCLogger::begin() {
+    Serial.println("CSC Logger init");
+
+    // Set subcomponent stores to enable component communication
+    for (BaseComponent *&comp : components) {
+        comp->setup(&components);
+    }
+
+    // begin subcomponents
+    for (BaseComponent *&comp : components) {
+        // Break recursion
+        if (comp == this)
+            continue;
+
+        comp->begin();
+    }
+
+    return true;
 }

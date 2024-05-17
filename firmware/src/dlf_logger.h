@@ -2,12 +2,16 @@
 
 #include <Arduino.h>
 
-#include "dlf_run.h"
-#include "dlf_logfile.hpp"
-#include "dlf_types.h"
+#include <chrono>
+#include <vector>
+
+#include "components/dlf_sync.h"
+#include "components/dlf_wifi.h"
 #include "datastream/EventStream.hpp"
 #include "datastream/PolledStream.hpp"
-#include <chrono>
+#include "dlf_logfile.hpp"
+#include "dlf_run.h"
+#include "dlf_types.h"
 
 #define INDEX_FILE_PATH "/__INDEX"
 #define BLOCK_SIZE 512
@@ -15,13 +19,10 @@
 #define BLOCK_OVERHEAD 512
 #define MAX_RUNS 1
 
-// #define DONT_WRITE_HEADER
-
 // 0 is error, > 0 is valid handle
 typedef int run_handle_t;
 
-class CSCLogger
-{
+class CSCLogger : public BaseComponent {
     typedef std::chrono::microseconds microseconds;
     typedef std::chrono::milliseconds milliseconds;
 
@@ -33,15 +34,18 @@ class CSCLogger
     FS &_fs;
     String fs_dir;
 
-public:
-    struct
-    {
-        uint8_t lel;
-    } components;
+    std::vector<BaseComponent *> components;
 
-    CSCLogger(FS &fs, String fs_dir = "/") : _fs(fs), fs_dir(fs_dir)
-    {
-    }
+   public:
+    enum LoggerEvents : uint32_t {
+        NEW_RUN = 1
+    };
+
+    EventGroupHandle_t ev;
+
+    CSCLogger(FS &fs, String fs_dir = "/");
+
+    bool begin();
 
     run_handle_t get_available_handle();
 
@@ -49,25 +53,13 @@ public:
 
     void stop_run(run_handle_t h);
 
-    template <typename T>
-    CSCLogger &watch(T &value, String id)
-    {
-        using namespace dlf::datastream;
+    bool run_is_active(const char* uuid);
 
-        AbstractStream *s = new EventStream(value, id);
-        data_streams.push_back(s);
+    CSCLogger &watch(Encodable value, String id);
 
-        return *this;
-    }
+    CSCLogger &poll(Encodable value, String id, microseconds sample_interval, microseconds phase = microseconds::zero());
 
-    template <typename T>
-    CSCLogger &poll(T &value, String id, microseconds sample_interval, microseconds phase = microseconds::zero())
-    {
-        using namespace dlf::datastream;
+    CSCLogger &syncTo(String server_ip, uint16_t port);
 
-        AbstractStream *s = new PolledStream(value, id, sample_interval, phase);
-        data_streams.push_back(s);
-
-        return *this;
-    }
+    CSCLogger &wifi(String ssid, String password);
 };

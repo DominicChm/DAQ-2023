@@ -27,14 +27,13 @@ const app = express();
 
 
 let ingestTout = null;
-app.post("/upload/:id", upload.single('file'), async (req, res) => {
-    console.log(req.file, req.body.name)
+app.post("/upload/:id", upload.any('files', 3), async (req, res) => {
+    console.log(req.files)
     res.send("OK!");
 
-    if (ingestTout)
-        clearTimeout(ingestTout);
+    await ingestRun(req.params.id);
 
-    ingestTout = setTimeout(ingestUploads, 2000);
+    //ingestTout = setTimeout(ingestUploads, 2000);
 });
 
 
@@ -99,32 +98,10 @@ async function ingestRun(runUUID) {
 
 }
 
-async function ingestUploads() {
-    for (const runDir of readdirSync(UPLOAD_DIR)) {
-        try {
-            await ingestRun(runDir);
-        } catch (e) {
-            console.warn("Failed to ingest", e);
-        }
-
-    }
-
-    await sequelize.sync();
-
-    // Filter data by run UUID
-    console.log(JSON.stringify(await RunData.findAll({
-        where: {
-            "$Run.uuid$": "8d0af5c2-0c87-4dbd-b997-b77606c7e93c"
-        },
-        include: [Run]
-    }), null, 2))
-}
-
 app.listen(8080, () => {
     console.log("Listening");
 });
 
 (async () => {
     await sequelize.sync({ force: true })
-    ingestUploads()
 })()
