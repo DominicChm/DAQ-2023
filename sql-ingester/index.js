@@ -32,8 +32,6 @@ app.post("/upload/:id", upload.any('files', 3), async (req, res) => {
     res.send("OK!");
 
     await ingestRun(req.params.id);
-
-    //ingestTout = setTimeout(ingestUploads, 2000);
 });
 
 
@@ -104,4 +102,4 @@ app.listen(8080, () => {
 
 (async () => {
     await sequelize.sync({ force: true })
-})()
+})();

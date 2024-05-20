@@ -63,7 +63,7 @@ void setup() {
     // Setup synchronization
     logger
         .wifi("test_net", "12345678")
-        .syncTo("10.160.1.167", 8080);
+        .syncTo("812.us.to", 9235);
 
     logger.begin();
 
