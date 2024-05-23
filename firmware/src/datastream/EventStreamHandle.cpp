@@ -1,4 +1,4 @@
-#include <datastream/EventStreamHandle.hpp>
+#include "EventStreamHandle.hpp"
 
 extern "C" {
 // https://github.com/haipome/fnv/tree/master
@@ -23,7 +23,7 @@ bool EventStreamHandle::available(dlf_tick_t tick) {
         "\tCheck Event Data\n"
         "\t\tid: %s\n"
         "\t\tAvailable: %d\n",
-        stream->id.c_str(), a);
+        stream->id(), a);
 #endif
     return a;
 }
@@ -33,11 +33,10 @@ size_t EventStreamHandle::encode_header_into(StreamBufferHandle_t buf) {
     DEBUG.printf(
         "\tEncode Event Header\n"
         "\t\tidx: %d\n"
-        "\t\ttype_id: %s (hash: %x)\n"
-        "\t\ttype_structure: %s\n"
+        "\t\ttype_structure: %s (hash: %x)\n"
         "\t\tid: %s\n"
-        "\t\tnotes: TODO\n",
-        idx, stream->src.type_id, stream->src.type_hash, stream->src.type_structure, stream->id.c_str());
+        "\t\tnotes: %s\n",
+        idx, stream->src.type_structure, stream->src.type_hash, stream->id(), stream->notes());
 #endif
 
     return AbstractStreamHandle::encode_header_into(buf);
@@ -50,7 +49,7 @@ size_t EventStreamHandle::encode_into(StreamBufferHandle_t buf, dlf_tick_t tick)
     DEBUG.printf(
         "\tEncode Event Data\n"
         "\t\tid: %s\n",
-        stream->id.c_str());
+        stream->id());
 #endif
     vTaskSuspendAll();  // Make sure hash and current written state stay in sync
     _hash = current_hash();

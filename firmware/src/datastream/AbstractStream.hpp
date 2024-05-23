@@ -1,7 +1,6 @@
 #pragma once
 
 #include <Arduino.h>
-#include <dlf_type_strings.h>
 #include <string.h>
 
 #include <chrono>
@@ -35,13 +34,16 @@ typedef std::unique_ptr<AbstractStreamHandle> stream_handle_t;
  * Abstract class representing a source of data as well as some information (name, typeID) about it.
  */
 class AbstractStream {
+   private:
+    const char *_notes;
+    const String _id;
+
    protected:
-    AbstractStream(Encodable &dat, String id) : id(id), src(dat) {
+    AbstractStream(Encodable &dat, String id, const char *notes) : _notes(notes), _id(id), src(dat) {
     }
 
    public:
     const Encodable src;
-    const String id;
 
     /**
      * @brief Creates a new, linked StreamHandle
@@ -59,6 +61,15 @@ class AbstractStream {
 
     inline const uint8_t *data_source() {
         return src.data;
+    }
+
+    inline const char *notes() {
+        if (_notes != nullptr) return _notes;
+        return "N/A";
+    }
+
+    inline const char *id() {
+        return _id.c_str();
     }
 };
 

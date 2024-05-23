@@ -41,7 +41,6 @@ enum dlf_stream_type_e : uint8_t {
 struct dlf_meta_header_t {
     uint16_t magic = DLF_MAGIC;  // IDs DLF files. Also allows auto-detection of LSB/MSB encoding.
     dlf_time_us_t tick_base_us;  // Base time interval, in us. Limits how fast samples will be stored.
-    const char* meta_id;               // Name of metadata struct.
     const char* meta_structure;        // Structure of metadata struct.
     uint32_t meta_size;          // Metadata size stored in case there is no metadata parser available
 
@@ -60,7 +59,6 @@ struct dlf_logfile_header_t {
 
 /* Stream Header Definitions (polled.dlf, events.dlf) */
 struct dlf_stream_header_t {
-    const char* type_id;         // Data type identifier. Used to select a parser. (ie "int", "float", "struct arbitrary")
     const char* type_structure;  // das
     const char* id;              // Unique identifier for this specific stream
     const char* notes;           // Anything that needs to be communicated about this data stream.

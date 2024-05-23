@@ -30,9 +30,31 @@ CRGB leds[3];
 template <uint8_t DATA_PIN, EOrder RGB_ORDER = GRB>
 class IN_PI42TAS : public ClocklessController<DATA_PIN, C_NS(300), C_NS(600), C_NS(200), RGB_ORDER, 4> {};
 
+double l = 0;
+
+void setup_logger() {
+    // logger
+    //     .watch(pos.lat, "longitude")
+    //     .watch(pos.lon, "latitude")
+    //     .watch(pos.alt, "altitude");
+
+    WATCH(logger, pos.lat, "position latitude");
+    WATCH(logger, pos.lon);
+    WATCH(logger, pos.alt);
+
+    // POLL(logger, pos.lat, seconds(1), seconds(0), "position latitude (polled)");
+    // POLL(logger, pos.lon, seconds(1), microseconds(100000), "position longitude");
+    // POLL(logger, pos.alt, seconds(1));
+    logger.poll(pos.alt, "pos.alt", seconds(1));
+    // logger
+    //     .wifi("test_net", "12345678")
+    //     .syncTo("812.us.to", 9235);
+    
+    logger.begin();
+}
+
 void setup() {
     pinMode(PIN_LOGSW, INPUT_PULLUP);
-
     FastLED.addLeds<IN_PI42TAS, PIN_ARGB, GRB>(leds, 3);
     FastLED.setBrightness(5);
 
@@ -57,20 +79,15 @@ void setup() {
 
     Serial.printf("SD Initialized! Size: %lumb\n", SD_MMC.cardSize() / (1llu << 20));
 
-    // Setup logger to log GPS position struct
-    logger.watch(pos, "GPSPos");
+    setup_logger();
 
     // Setup synchronization
-    logger
-        .wifi("test_net", "12345678")
-        .syncTo("812.us.to", 9235);
 
-    logger.begin();
 
     // Wait for switch to be disabled
     while (!digitalRead(PIN_LOGSW))
         FastLED.showColor(CRGB::FairyLight);
-        delay(100);
+    delay(100);
 
     FastLED.showColor(CRGB::Yellow);
 }
@@ -101,7 +118,7 @@ void loop() {
             uint32_t time = 0;
             uint64_t another = 5;
         } run_metadata;
-        run = logger.start_run(run_metadata, std::chrono::milliseconds(100));
+        run = logger.start_run(Encodable(run_metadata, "run_meta;time:uint32_t:0;another:uint64_t:4"), std::chrono::milliseconds(100));
 
         // Show blue to indicate run start
         FastLED.showColor(CRGB::Blue);

@@ -1,4 +1,4 @@
-#include <datastream/PolledStreamHandle.hpp>
+#include "PolledStreamHandle.hpp"
 
 using namespace dlf::datastream;
 
@@ -14,7 +14,7 @@ bool PolledStreamHandle::available(dlf_tick_t tick) {
         "\tCheck Polled Data\n"
         "\t\tid: %s\n"
         "\t\tAvailable: %d\n",
-        stream->id.c_str(), a);
+        stream->id(), a);
 #endif
     return a;
 }
@@ -24,18 +24,17 @@ size_t PolledStreamHandle::encode_header_into(StreamBufferHandle_t buf) {
     DEBUG.printf(
         "\tEncode Polled Header\n"
         "\t\tidx: %d\n"
-        "\t\ttype_id: %s (hash: %x)\n"
-        "\t\ttype_structure: %s\n"
+        "\t\ttype_structure: %s (hash: %x)\n"
         "\t\tid: %s\n"
-        "\t\ttick_interval: %u\n"
-        "\t\ttick_phase: %u\n"
-        "\t\tnotes: TODO\n",
-        idx, stream->src.type_id, stream->src.type_hash, stream->src.type_structure, stream->id.c_str(), _sample_interval_ticks, _sample_phase_ticks);
+        "\t\tnotes: %s\n"
+        "\t\ttick_interval: %llu\n"
+        "\t\ttick_phase: %llu\n",
+        idx, stream->src.type_structure, stream->src.type_hash, stream->id(), stream->notes(), _sample_interval_ticks, _sample_phase_ticks);
 #endif
 
     AbstractStreamHandle::encode_header_into(buf);
-    
-    dlf_polled_stream_header_segment_t h {
+
+    dlf_polled_stream_header_segment_t h{
         _sample_interval_ticks,
         _sample_phase_ticks,
     };
@@ -48,7 +47,7 @@ size_t PolledStreamHandle::encode_into(StreamBufferHandle_t buf, dlf_tick_t tick
     DEBUG.printf(
         "\tEncode Polled Data\n"
         "\t\tid: %s\n",
-        stream->id.c_str());
+        stream->id());
 #endif
     // Sample data
     return xStreamBufferSend(buf, stream->data_source(), stream->data_size(), 0);

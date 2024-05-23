@@ -16,7 +16,7 @@ class PolledStream : public AbstractStream {
     microseconds _phase_us;
 
    public:
-    PolledStream(Encodable &src, String id, microseconds sample_interval, microseconds phase = std::chrono::microseconds::zero());
+    PolledStream(Encodable &src, String id, microseconds sample_interval, microseconds phase, const char* notes);
 
     stream_handle_t handle(microseconds tick_interval, dlf_stream_idx_t idx);
 

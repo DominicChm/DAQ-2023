@@ -15,7 +15,7 @@ namespace dlf::datastream {
  */
 class EventStream : public AbstractStream {
    public:
-    EventStream(Encodable &dat, String id);
+    EventStream(Encodable &dat, String id, const char* notes);
 
     stream_handle_t handle(microseconds tick_interval, dlf_stream_idx_t idx);
 

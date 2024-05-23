@@ -1,10 +1,10 @@
-#include <datastream/PolledStream.hpp>
-#include <datastream/PolledStreamHandle.hpp>
+#include "PolledStream.hpp"
+#include "PolledStreamHandle.hpp"
 
 using namespace dlf::datastream;
 
-PolledStream::PolledStream(Encodable &src, String id, microseconds sample_interval, microseconds phase)
-    : AbstractStream(src, id), _sample_interval_us(sample_interval), _phase_us(phase)
+PolledStream::PolledStream(Encodable &src, String id, microseconds sample_interval, microseconds phase, const char* notes)
+    : AbstractStream(src, id, notes), _sample_interval_us(sample_interval), _phase_us(phase)
 {
 }
 

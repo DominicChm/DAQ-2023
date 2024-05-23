@@ -13,6 +13,19 @@
 #include "dlf_run.h"
 #include "dlf_types.h"
 
+#define POLL(type_name)                                                                                                                                        \
+    CSCLogger &poll(type_name value, String id, microseconds sample_interval, microseconds phase = microseconds::zero(), const char *notes = nullptr) { \
+        return _poll(Encodable(value, #type_name), id, sample_interval, phase, notes);                                                                         \
+    }                                                                                                                                                          \
+    // inline CSCLogger &poll(type_name value, String id, microseconds sample_interval, const char *notes) { \
+    //     return _poll(Encodable(value, #type_name), id, sample_interval, microseconds::zero(), notes);                                                                         \
+    // }
+
+#define WATCH(type_name)                                                               \
+    CSCLogger &watch(type_name value, String id, const char *notes = nullptr) { \
+        return _watch(Encodable(value, #type_name), id, notes);                        \
+    }
+
 #define INDEX_FILE_PATH "/__INDEX"
 #define BLOCK_SIZE 512
 #define NUM_BLOCKS 10
@@ -53,13 +66,41 @@ class CSCLogger : public BaseComponent {
 
     void stop_run(run_handle_t h);
 
-    bool run_is_active(const char* uuid);
+    bool run_is_active(const char *uuid);
 
-    CSCLogger &watch(Encodable value, String id);
+    CSCLogger &_watch(Encodable value, String id, const char *notes);
+    WATCH(uint8_t)
+    WATCH(uint16_t)
+    WATCH(uint32_t)
+    WATCH(uint64_t)
+    WATCH(int8_t)
+    WATCH(int16_t)
+    WATCH(int32_t)
+    WATCH(int64_t)
+    WATCH(bool)
+    WATCH(double)
+    WATCH(float)
 
-    CSCLogger &poll(Encodable value, String id, microseconds sample_interval, microseconds phase = microseconds::zero());
+    CSCLogger &_poll(Encodable value, String id, microseconds sample_interval, microseconds phase, const char *notes);
+    POLL(uint8_t)
+    POLL(uint16_t)
+    POLL(uint32_t)
+    POLL(uint64_t)
+    POLL(int8_t)
+    POLL(int16_t)
+    POLL(int32_t)
+    POLL(int64_t)
+    POLL(bool)
+    POLL(double)
+    POLL(float)
 
     CSCLogger &syncTo(String server_ip, uint16_t port);
 
     CSCLogger &wifi(String ssid, String password);
 };
+
+#undef POLL
+#undef WATCH
+
+#define WATCH(logger, value, ...) logger.watch(value, #value, ##__VA_ARGS__)
+#define POLL(logger, value, ...) logger.poll(value, #value, ##__VA_ARGS__)

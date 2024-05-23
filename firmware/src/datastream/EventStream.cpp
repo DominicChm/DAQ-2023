@@ -1,9 +1,9 @@
-#include <datastream/EventStream.hpp>
-#include <datastream/EventStreamHandle.hpp>
+#include "EventStream.hpp"
+#include "EventStreamHandle.hpp"
 
 using namespace dlf::datastream;
 
-EventStream::EventStream(Encodable &dat, String id) : AbstractStream(dat, id) {
+EventStream::EventStream(Encodable &dat, String id, const char* notes) : AbstractStream(dat, id, notes) {
 }
 
 stream_handle_t EventStream::handle(microseconds tick_interval, dlf_stream_idx_t idx) {

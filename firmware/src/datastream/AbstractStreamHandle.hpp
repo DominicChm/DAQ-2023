@@ -4,7 +4,6 @@
 #include <freertos/stream_buffer.h>
 
 #include "AbstractStream.hpp"
-#include <dlf_type_strings.h>
 
 namespace dlf::datastream {
 
@@ -27,16 +26,13 @@ class AbstractStreamHandle {
     virtual size_t encode_into(StreamBufferHandle_t buf, dlf_tick_t tick) = 0;
 
     virtual size_t encode_header_into(StreamBufferHandle_t buf) {
-
         dlf_stream_header_t h{
-            stream->src.type_id,
             stream->src.type_structure,
-            stream->id.c_str(),
-            "Notes...",
+            stream->id(),
+            stream->notes(),
             stream->data_size(),
         };
-        
-        send(buf, h.type_id);
+
         send(buf, h.type_structure);
         send(buf, h.id);
         send(buf, h.notes);
@@ -49,8 +45,12 @@ class AbstractStreamHandle {
         return xStreamBufferSend(buf, reinterpret_cast<uint8_t *>(&data), sizeof(T), portMAX_DELAY);
     }
 
-    size_t send(StreamBufferHandle_t buf, const char* data) {
-        return xStreamBufferSend(buf, data, strlen(data) + 1, portMAX_DELAY);
+    size_t send(StreamBufferHandle_t buf, const char *data) {
+        if (data) {
+            return xStreamBufferSend(buf, data, strlen(data) + 1, portMAX_DELAY);
+        } else {
+            return xStreamBufferSend(buf, "", strlen(""), portMAX_DELAY);
+        }
     }
 };
 
