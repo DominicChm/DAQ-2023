@@ -18,6 +18,7 @@ bool CSCWifiClient::begin() {
     WiFi.onEvent(BIND_EVENT_CB(CSCWifiClient::on_wifi_disconnect), ARDUINO_EVENT_WIFI_STA_DISCONNECTED);
     WiFi.onEvent(BIND_EVENT_CB(CSCWifiClient::on_ip_get), ARDUINO_EVENT_WIFI_STA_GOT_IP);
 
+    WiFi.disconnect(true);
     WiFi.begin(ssid.c_str(), password.c_str());
 
     return true;
@@ -26,9 +27,10 @@ bool CSCWifiClient::begin() {
 void CSCWifiClient::on_wifi_disconnect(arduino_event_id_t event, arduino_event_info_t info) {
     Serial.println("WIFI DISCONNECT");
     xEventGroupClearBits(ev, WLAN_READY);
+    WiFi.begin(ssid.c_str(), password.c_str());
 }
 
 void CSCWifiClient::on_ip_get(arduino_event_id_t event, arduino_event_info_t info) {
-    Serial.println("IP GET");
+    Serial.println("WiFi connected!");
     xEventGroupSetBits(ev, WLAN_READY);
 }

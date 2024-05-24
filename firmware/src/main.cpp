@@ -46,9 +46,9 @@ void setup_logger() {
     POLL(logger, pos.lon, seconds(1), microseconds(100000), "position longitude");
     POLL(logger, pos.alt, seconds(1));
     // logger.poll(pos.alt, "pos.alt", seconds(1));
-    // logger
-    //     .wifi("test_net", "12345678")
-    //     .syncTo("812.us.to", 9235);
+    logger
+        .wifi("test_net", "12345678")
+        .syncTo("812.us.to", 9235);
 
     logger.begin();
 }
