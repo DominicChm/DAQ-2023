@@ -13,17 +13,17 @@
 #include "dlf_run.h"
 #include "dlf_types.h"
 
-#define POLL(type_name)                                                                                                                                        \
-    CSCLogger &poll(type_name value, String id, microseconds sample_interval, microseconds phase = microseconds::zero(), const char *notes = nullptr) { \
-        return _poll(Encodable(value, #type_name), id, sample_interval, phase, notes);                                                                         \
-    }                                                                                                                                                          \
-    // inline CSCLogger &poll(type_name value, String id, microseconds sample_interval, const char *notes) { \
-    //     return _poll(Encodable(value, #type_name), id, sample_interval, microseconds::zero(), notes);                                                                         \
-    // }
+#define POLL(type_name)                                                                                                                                 \
+    CSCLogger &poll(type_name &value, String id, microseconds sample_interval, microseconds phase = microseconds::zero(), const char *notes = nullptr) { \
+        return _poll(Encodable(value, #type_name), id, sample_interval, phase, notes);                                                                  \
+    }                                                                                                                                                   \
+    inline CSCLogger &poll(type_name &value, String id, microseconds sample_interval, const char *notes) {                                               \
+        return _poll(Encodable(value, #type_name), id, sample_interval, microseconds::zero(), notes);                                                   \
+    }
 
-#define WATCH(type_name)                                                               \
-    CSCLogger &watch(type_name value, String id, const char *notes = nullptr) { \
-        return _watch(Encodable(value, #type_name), id, notes);                        \
+#define WATCH(type_name)                                                        \
+    CSCLogger &watch(type_name &value, String id, const char *notes = nullptr) { \
+        return _watch(Encodable(value, #type_name), id, notes);                 \
     }
 
 #define INDEX_FILE_PATH "/__INDEX"

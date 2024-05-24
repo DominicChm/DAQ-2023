@@ -18,10 +18,10 @@ TinyGPSPlus gps;
 CSCLogger logger(SD_MMC);
 
 struct GPSPos {
-    double lat;
-    double lon;
-    double alt;
-} pos;
+    uint32_t lat = 0;
+    uint32_t lon = 0;
+    uint32_t alt = 0;
+} pos{};
 
 run_handle_t run;
 
@@ -34,22 +34,22 @@ double l = 0;
 
 void setup_logger() {
     // logger
-    //     .watch(pos.lat, "longitude")
-    //     .watch(pos.lon, "latitude")
-    //     .watch(pos.alt, "altitude");
+    //     .watch(pos.lat, "pos.lat", "longitude")
+    //     .watch(pos.lon, "pos.lon", "latitude")
+    //     .watch(pos.alt, "pos.alt", "altitude");
 
-    WATCH(logger, pos.lat, "position latitude");
-    WATCH(logger, pos.lon);
-    WATCH(logger, pos.alt);
+    WATCH(logger, pos.lat);//, "longitude");
+    WATCH(logger, pos.lon);//, "latitude");
+    WATCH(logger, pos.alt);//, "altitude");
 
-    // POLL(logger, pos.lat, seconds(1), seconds(0), "position latitude (polled)");
-    // POLL(logger, pos.lon, seconds(1), microseconds(100000), "position longitude");
-    // POLL(logger, pos.alt, seconds(1));
-    logger.poll(pos.alt, "pos.alt", seconds(1));
+    POLL(logger, l, seconds(1), "position latitude (polled)");
+    POLL(logger, pos.lon, seconds(1), microseconds(100000), "position longitude");
+    POLL(logger, pos.alt, seconds(1));
+    // logger.poll(pos.alt, "pos.alt", seconds(1));
     // logger
     //     .wifi("test_net", "12345678")
     //     .syncTo("812.us.to", 9235);
-    
+
     logger.begin();
 }
 
@@ -83,7 +83,6 @@ void setup() {
 
     // Setup synchronization
 
-
     // Wait for switch to be disabled
     while (!digitalRead(PIN_LOGSW))
         FastLED.showColor(CRGB::FairyLight);
@@ -99,12 +98,12 @@ void loop() {
     }
 
     // Update GPS data.
-    if (gps.location.isUpdated()) {
-        Serial.println("Got GPS data");
-        pos.lat = gps.location.lat();
-        pos.lon = gps.location.lng();
-        pos.alt = gps.altitude.meters();
-    }
+    // if (gps.location.isUpdated()) {
+    //     Serial.println("Got GPS data");
+    //     pos.lat = gps.location.lat();
+    //     pos.lon = gps.location.lng();
+    //     pos.alt = gps.altitude.meters();
+    // }
 
     /** DAQ Below Here **/
 
@@ -118,7 +117,7 @@ void loop() {
             uint32_t time = 0;
             uint64_t another = 5;
         } run_metadata;
-        run = logger.start_run(Encodable(run_metadata, "run_meta;time:uint32_t:0;another:uint64_t:4"), std::chrono::milliseconds(100));
+        run = logger.start_run(Encodable(run_metadata, "run_meta;time:uint32_t:0;another:uint64_t:8"), std::chrono::milliseconds(100));
 
         // Show blue to indicate run start
         FastLED.showColor(CRGB::Blue);
@@ -128,6 +127,8 @@ void loop() {
     } else if (run && digitalRead(PIN_LOGSW)) {
         Serial.println("Stopping run!!!");
 
+        Serial.println(pos.lat);
+        
         // Blocks until run is stopped
         logger.stop_run(run);
         run = 0;

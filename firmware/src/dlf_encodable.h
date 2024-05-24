@@ -10,7 +10,7 @@ class Encodable {
    public:
     const char *type_structure = nullptr;
     size_t type_hash = 0;
-    const uint8_t *data = nullptr;
+    uint8_t *data = nullptr;
     size_t data_size = 0;
 
     /**
@@ -29,10 +29,10 @@ class Encodable {
     // }
 
     template <typename T>
-    Encodable(const T &v, const char *type_structure) : type_structure(type_structure),
-                                                        type_hash(hash_str(type_structure)),
-                                                        data((uint8_t *)(&v)),
-                                                        data_size(sizeof(T)) {
+    Encodable(T &v, const char *type_structure) : type_structure(type_structure),
+                                                  type_hash(hash_str(type_structure)),
+                                                  data((uint8_t *)(&v)),
+                                                  data_size(sizeof(T)) {
     }
 };
 
