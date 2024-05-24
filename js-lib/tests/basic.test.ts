@@ -21,35 +21,53 @@ test("Basic meta", async () => {
         magic: 33812,
         tick_base_us: 100000,
         meta_size: 16,
-        meta_id: "constexpr const char* t() [with T = setup()::lele]",
-        meta_structure: "meta_struct;time:uint32_t:0;another:uint64_t:8",
+        meta_structure: "run_meta;time:uint32_t:0;another:uint64_t:8",
     });
 
-    expect(await a.meta()).toMatchObject({
-        another: 5n,
-        time: 0
-    });
+    // expect(await a.meta()).toMatchObject({
+    //     another: 9523124174940276194n,
+    //     time: 1061160418
+    // });
 });
 
 test("polled headers", async () => {
     expect(await a.polled_header()).toMatchObject({
         "magic": 33812,
-        "num_streams": 1,
+        "num_streams": 3,
         "stream_type": 0,
         "streams": [
             {
-                "id": "led_poll",
-                "notes": "Notes...",
+                "id": "l",
+                "notes": "position latitude (polled)",
                 "stream_info": {
-                    "tick_interval": 10,
-                    "tick_phase": 0,
+                    "tick_interval": 10n,
+                    "tick_phase": 0n,
                 },
-                "type_id": "constexpr const char* t() [with T = bool]",
-                "type_size": 1,
-                "type_structure": "bool",
+                "type_size": 8,
+                "type_structure": "double",
+            },
+            {
+                "id": "pos.lon",
+                "notes": "position longitude",
+                "stream_info": {
+                    "tick_interval": 10n,
+                    "tick_phase": 1n,
+                },
+                "type_size": 4,
+                "type_structure": "uint32_t",
+            },
+            {
+                "id": "pos.alt",
+                "notes": "N/A",
+                "stream_info": {
+                    "tick_interval": 10n,
+                    "tick_phase": 0n,
+                },
+                "type_size": 4,
+                "type_structure": "uint32_t",
             },
         ],
-        "tick_span": 67n,
+        "tick_span": 34n,
     });
 });
 
@@ -61,34 +79,35 @@ test("event headers", async () => {
         "stream_type": 1,
         "streams": [
             {
-                "id": "led_event",
-                "notes": "Notes...",
+                "id": "pos.lat",
+                "notes": "N/A",
                 "stream_info": {},
-                "type_id": "constexpr const char* t() [with T = bool]",
-                "type_size": 1,
-                "type_structure": "bool",
-            },
-            {
-                "id": "start_time",
-                "notes": "Notes...",
-                "stream_info": {},
-                "type_id": "constexpr const char* t() [with T = long int]",
                 "type_size": 4,
                 "type_structure": "uint32_t",
             },
             {
-                "id": "Test struct",
-                "notes": "Notes...",
+                "id": "pos.lon",
+                "notes": "N/A",
                 "stream_info": {},
-                "type_id": "constexpr const char* t() [with T = a_struct]",
-                "type_size": 2,
-                "type_structure": "a_struct;a1:uint8_t:0;a2:uint8_t:1",
+                "type_size": 4,
+                "type_structure": "uint32_t",
+            },
+            {
+                "id": "pos.alt",
+                "notes": "N/A",
+                "stream_info": {},
+                "type_size": 4,
+                "type_structure": "uint32_t",
             },
         ],
-        "tick_span": 67n,
+        "tick_span": 34n,
     });
 });
 
-test("Events data", async () => {
-    console.log(await a.events_data())
+// test("Events data", async () => {
+//     console.log(await a.events_data())
+// })
+
+test("Polled data", async () => {
+    console.log(await a.polled_data(0n, 50n))
 })

@@ -26,7 +26,6 @@ const meta_header_t = new Parser()
     .endianness("little")
     .uint16("magic")
     .uint32("tick_base_us")
-    .string("meta_id", { zeroTerminated: true })
     .string("meta_structure", { zeroTerminated: true })
     .uint32("meta_size")
     .buffer("meta", { readUntil: "eof" });
@@ -62,7 +61,6 @@ const logfile_header_t = new Parser()
     .array("streams", {
         length: "num_streams",
         type: new Parser()
-            .string("type_id", { zeroTerminated: true })
             .string("type_structure", { zeroTerminated: true })
             .string("id", { zeroTerminated: true })
             .string("notes", { zeroTerminated: true })
@@ -72,8 +70,8 @@ const logfile_header_t = new Parser()
                 tag: function () { return this.$root.stream_type },
                 choices: {
                     0: new Parser()
-                        .uint32le("tick_interval")
-                        .uint32le("tick_phase"), // polled
+                        .uint64le("tick_interval")
+                        .uint64le("tick_phase"), // polled
                     1: new Parser(), // event
                 }
             })
@@ -86,6 +84,7 @@ export abstract class Adapter {
     abstract get events_dlf(): Promise<Uint8Array>;
     abstract get meta_dlf(): Promise<Uint8Array>;
 
+    // name;member_1_name:member_1_type:offset;...member_n_name:member_n_type:offset
     create_parser(structure: string, structure_size?: number): Parser {
         // No contained structure
         if (structure.startsWith("!"))
@@ -94,6 +93,7 @@ export abstract class Adapter {
         if (binary_parsers_primitives[structure]) {
             return binary_parsers_primitives[structure]
         }
+
 
         // Create parser
         // name;member_1:primitive_type:offset;...
@@ -163,7 +163,7 @@ export abstract class Adapter {
         // Create choices
         const choices = {};
         for (const [i, stream] of header.streams.entries()) {
-            choices[i] = this.create_parser(stream.type_structure, stream.type_size, 10);
+            choices[i] = this.create_parser(stream.type_structure, stream.type_size);
         }
 
 
@@ -191,30 +191,78 @@ export abstract class Adapter {
         return merged_data
     }
 
-    async polled_data(downsample = 1n) {
-        let [header, headerLen] = (await this.polled_header())
+    // Really, really awful code. Sorry... binary-parser has a kinda yucky api.
+    async polled_data(start = 0n, stop: null | bigint = null, downsample = 1n) {
+        start = BigInt(start);
+        stop = BigInt(stop);
+        downsample = BigInt(downsample) || 1n;
 
-        let data = Object.fromEntries(header.streams.map(v => [v.id, []]));
 
-        const abuf = await this.polled_dlf;
-        let blen = abuf.byteLength as number;
+        let header = await this.polled_header()
 
-        for (let i = headerLen as number, t = 0n; i < blen; t += downsample) {
-            for (const stream of header.streams) {
-                if ((t + stream.tick_phase) % stream.tick_interval != 0n)
-                    continue;
+        const createParser = (s) => {
+            let t = this.create_parser(s.type_structure, s.type_size)
+            if (typeof t == "string") {
+                return new Parser()[t]("data");
+            } else {
+                return new Parser().nest("data", {
+                    type: "uint32le"
+                })
+            }
+        };
 
-                let tParser = this._type_parsers[stream.type_id];
-                if (tParser) {
-                    let [value, size] = tParser.read(abuf, i);
-                    data[stream.id].push({ tick: t, data: value });
+        const mapEntries = header.streams.map(s => [s, createParser(s)]);
+        let headerParsers = new Map<Tlogfile_header_t["streams"][0], Parser>(mapEntries as any);
 
-                } else {
-                    console.warn("Unknown datatype found")
+        function getNearestByteOffset(tick: bigint, stream: Tlogfile_header_t["streams"][0]) {
+            let interval = BigInt(stream.stream_info.tick_interval);
+            let phase = BigInt(stream.stream_info.tick_phase);
+            let size = BigInt(stream.type_size);
+
+            if ((tick % interval) != 0n) {
+                return null;
+            }
+
+            //tick = (tick / interval) * interval;
+
+            // Formula: sum (ceil((tick+phase) / interval) * size) 
+            let block_start = 0n;
+            let target_found = false;
+            for (const s of header.streams) {
+                let interval = BigInt(s.stream_info.tick_interval);
+                let phase = BigInt(s.stream_info.tick_phase);
+                let size = BigInt(s.type_size);
+
+                block_start += ((tick + phase) / interval + (tick % interval ? 1n : 0n)) * size;
+
+                target_found ||= s == stream;
+
+                if (!target_found) {
+                    block_start += size;
                 }
-                i += stream.type_size;
+
+            }
+            return block_start;
+        }
+
+        let abuf = header.data;
+        let data = []; // tick: {values}
+
+
+        for (let tick: bigint = start; (stop == null || tick < stop) && (tick < BigInt(header.tick_span)); tick += downsample) {
+
+            for (const [stream, parser] of headerParsers.entries()) {
+                let o = getNearestByteOffset(tick, stream);
+                if (o == null) continue;
+                if(BigInt(stream.type_size) + o > header.data.byteLength) break;
+                data.push({
+                    stream,
+                    data: parser.parse(new Uint8Array(header.data.buffer, Number(o) + header.data.byteOffset)).data,
+                    tick,
+                });
             }
         }
+
         return data
     }
 
