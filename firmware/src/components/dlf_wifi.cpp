@@ -25,7 +25,7 @@ bool CSCWifiClient::begin() {
 }
 
 void CSCWifiClient::on_wifi_disconnect(arduino_event_id_t event, arduino_event_info_t info) {
-    Serial.println("WIFI DISCONNECT");
+    // Serial.println("WIFI DISCONNECT");
     xEventGroupClearBits(ev, WLAN_READY);
     WiFi.begin(ssid.c_str(), password.c_str());
 }
