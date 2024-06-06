@@ -124,7 +124,5 @@ app.listen(8080, () => {
 
 (async () => {
     await sequelize.sync({ force: true });
-
-    await ingestRun("7ccdf69b-ecc2-45e9-a6a6-ff527bc99209");
     console.log("DONE");
 })();

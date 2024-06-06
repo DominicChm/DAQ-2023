@@ -115,7 +115,7 @@ bool has_usb_power() {
 void task_shutdown_monitor(void* args) {
     static bool vusb_sleep_armed = false;
 
-    vTaskDelay(1000);
+    delay(5000);
 
     while (true) {
         bool io0_sleep = !digitalRead(PIN_GOTO_SLEEP);
@@ -128,7 +128,7 @@ void task_shutdown_monitor(void* args) {
 
         vusb_sleep_armed = usb_sleep;
 
-        vTaskDelay(1000);
+        delay(1000);
     }
 
     Serial.println("GOING TO SLEEP!");
@@ -160,14 +160,20 @@ void offload_init() {
     FastLED.showColor(CRGB::YellowGreen);  // overriden wake (battery + reset)
     offload_mode = true;
 
+    init();
+
     wait_sd();
     setup_logger();
 
+    FastLED.showColor(CRGB::HotPink);  // overriden wake (battery + reset)
+    delay(1000);
     // TODO: setup logger w/ offload capabilities.
 }
 
 void standard_init() {
     FastLED.showColor(CRGB::Blue);  // standard wake
+
+    init();
 
     xTaskCreate(task_gps, "gps", 4096, NULL, 5, NULL);
     pinMode(PIN_STRING_POT, INPUT);
@@ -183,23 +189,23 @@ void standard_init() {
 }
 
 void init() {
-    FastLED.addLeds<WS2812, 2, GRB>(leds, 1);
-    FastLED.setBrightness(10);
-    FastLED.showColor(CRGB::Red);
-
     logger
         .wifi("test_net", "12345678")
-        .syncTo("10.160.1.167", 8080);
+        .syncTo("812.us.to", 9235);
 
     xTaskCreate(task_shutdown_monitor, "shutdown_mon", 4096, NULL, 5, NULL);
 }
 
 void setup() {
+    FastLED.addLeds<WS2812, 2, GRB>(leds, 1);
+    FastLED.setBrightness(10);
+
     Serial.begin(115200);
+    FastLED.showColor(CRGB::White);  // standard wake
+
     Serial.println("Starting in 2s...");
     delay(2000);
 
-    init();
 
     // check startup mode. If not woken b/c of USB connection,
     // go into sleep overriden mode.
