@@ -194,7 +194,10 @@ export abstract class Adapter {
     // Really, really awful code. Sorry... binary-parser has a kinda yucky api.
     async polled_data(start = 0n, stop: null | bigint = null, downsample = 1n) {
         start = BigInt(start);
-        stop = BigInt(stop);
+
+        if (stop != null)
+            stop = BigInt(stop);
+
         downsample = BigInt(downsample) || 1n;
 
 
@@ -210,7 +213,6 @@ export abstract class Adapter {
                 })
             }
         };
-
         const mapEntries = header.streams.map(s => [s, createParser(s)]);
         let headerParsers = new Map<Tlogfile_header_t["streams"][0], Parser>(mapEntries as any);
 
@@ -233,11 +235,13 @@ export abstract class Adapter {
                 let phase = BigInt(s.stream_info.tick_phase);
                 let size = BigInt(s.type_size);
 
+                // Add contribution to base offset
                 block_start += ((tick + phase) / interval + (tick % interval ? 1n : 0n)) * size;
-
+                
+                // calculate offset within base block offset
                 target_found ||= s == stream;
 
-                if (!target_found) {
+                if (!target_found && ((tick + phase) % interval == 0n)) {
                     block_start += size;
                 }
 
@@ -254,11 +258,12 @@ export abstract class Adapter {
             for (const [stream, parser] of headerParsers.entries()) {
                 let o = getNearestByteOffset(tick, stream);
                 if (o == null) continue;
-                if(BigInt(stream.type_size) + o > header.data.byteLength) break;
+                if (BigInt(stream.type_size) + o > header.data.byteLength) break;
                 data.push({
                     stream,
                     data: parser.parse(new Uint8Array(header.data.buffer, Number(o) + header.data.byteOffset)).data,
                     tick,
+                    o
                 });
             }
         }

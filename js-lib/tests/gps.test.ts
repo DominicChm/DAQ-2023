@@ -53,5 +53,5 @@ test("event headers", async () => {
 });
 
 test("Events data", async () => {
-    console.log(await a.events_data())
+    console.log(await a.polled_data())
 })

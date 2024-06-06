@@ -1,7 +1,7 @@
 import express from "express"
 import sqlite from "sqlite3"
 import { FSAdapter } from "dlflib-js/dist/fsadapter.js";
-import { readdirSync, rmSync } from "fs"
+import { fstat, readdirSync, rmSync, rmdirSync } from "fs"
 import { readFile } from "fs/promises"
 import multer from "multer";
 import { resolve } from "path";
@@ -31,7 +31,12 @@ app.post("/upload/:id", upload.any('files', 3), async (req, res) => {
     console.log(req.files)
     res.send("OK!");
 
-    await ingestRun(req.params.id);
+    try {
+        await ingestRun(req.params.id);
+    } catch (e) {
+        console.log(`FAILED TO INGEST ${req.params.id}`);
+        console.error(e);
+    }
 });
 
 
@@ -75,31 +80,51 @@ async function ingestRun(runUUID) {
     });
 
     console.log("Ingesting event data");
-    
-    const run = new FSAdapter(resolve(UPLOAD_DIR, runUUID));
-    
-    console.log(await run.events_data())
-    const dat = await run.events_data()
 
-    for (const d of dat) {
+    const run = new FSAdapter(resolve(UPLOAD_DIR, runUUID));
+
+    let dat = await run.events_data()
+    let bulkData = dat.map((d) => {
         const dataStr = typeof d.data == "object" ? JSON.stringify(d.data) : d.data.toString();
-        await RunData.create({
+        return {
             type: "event",
             stream_id: d.stream.id,
             tick: d.tick,
             data: dataStr,
             RunId: r.id
-        });
-        await RunData.sync();
+        };
+    })
+    await RunData.bulkCreate(bulkData);
 
-    }
 
+    dat = await run.polled_data()
+    bulkData = dat.map((d) => {
+        const dataStr = typeof d.data == "object" ? JSON.stringify(d.data) : d.data.toString();
+        return {
+            type: "polled",
+            stream_id: d.stream.id,
+            tick: d.tick,
+            data: dataStr,
+            RunId: r.id
+        };
+    });
+    await RunData.bulkCreate(bulkData);
+
+
+    // sync
+    await RunData.sync();
 }
+
+// rmSync(UPLOAD_DIR, {recursive: true, force: true});
+// mkdirSync(UPLOAD_DIR);
 
 app.listen(8080, () => {
     console.log("Listening");
 });
 
 (async () => {
-    await sequelize.sync({ force: true })
+    await sequelize.sync({ force: true });
+
+    await ingestRun("7ccdf69b-ecc2-45e9-a6a6-ff527bc99209");
+    console.log("DONE");
 })();

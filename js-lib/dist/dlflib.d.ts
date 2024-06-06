@@ -35,8 +35,6 @@ export declare abstract class Adapter {
     } & {
         tick_base_us: number;
     } & {
-        meta_id: string;
-    } & {
         meta_structure: string;
     } & {
         meta_size: number;
@@ -62,12 +60,8 @@ export declare abstract class Adapter {
         tick: bigint;
         data: never;
     }[]>;
-    polled_data(downsample?: bigint): Promise<{
-        [k: string]: any;
-    }>;
-    data(): Promise<{
-        [k: string]: any;
-    } & {
+    polled_data(start?: bigint, stop?: null | bigint, downsample?: bigint): Promise<any[]>;
+    data(): Promise<any[] & {
         stream: {
             type_id: string;
             type_structure: string;
