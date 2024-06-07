@@ -53,7 +53,7 @@ void CSCLogger::stop_run(run_handle_t h) {
     xEventGroupSetBits(ev, NEW_RUN);
 }
 
-CSCLogger &CSCLogger::_watch(Encodable value, String id, const char* notes) {
+CSCLogger &CSCLogger::_watch(Encodable value, String id, const char *notes) {
     using namespace dlf::datastream;
 
     AbstractStream *s = new EventStream(value, id, notes);
@@ -62,7 +62,7 @@ CSCLogger &CSCLogger::_watch(Encodable value, String id, const char* notes) {
     return *this;
 }
 
-CSCLogger &CSCLogger::_poll(Encodable value, String id, microseconds sample_interval, microseconds phase, const char* notes) {
+CSCLogger &CSCLogger::_poll(Encodable value, String id, microseconds sample_interval, microseconds phase, const char *notes) {
     using namespace dlf::datastream;
 
     AbstractStream *s = new PolledStream(value, id, sample_interval, phase, notes);
@@ -89,6 +89,7 @@ CSCLogger &CSCLogger::wifi(String ssid, String password) {
 
 bool CSCLogger::begin() {
     Serial.println("CSC Logger init");
+    prune();
 
     // Set subcomponent stores to enable component communication
     for (BaseComponent *&comp : components) {
@@ -105,4 +106,35 @@ bool CSCLogger::begin() {
     }
 
     return true;
+}
+
+void CSCLogger::prune() {
+    File root = _fs.open(fs_dir);
+
+    File run_dir;
+    while (run_dir = root.openNextFile()) {
+        // Skip sys vol information file
+        if (!strcmp(run_dir.name(), "System Volume Information"))
+            continue;
+
+        if (!run_dir.isDirectory())
+            continue;
+
+        // Search for lockfiles. Delete run if found (was dirty when closed).
+        File run_file;
+        while (run_file = run_dir.openNextFile()) {
+            if (!strcmp(run_file.name(), LOCKFILE_NAME)) {
+                Serial.printf("Pruning %s\n", (fs_dir + run_dir.name()).c_str());
+
+                run_dir.rewindDirectory();
+                while (run_file = run_dir.openNextFile()) {
+                    _fs.remove(fs_dir + run_dir.name() + "/" + run_file.name());
+                }
+
+                _fs.rmdir(fs_dir + run_dir.name());
+                break;
+            }
+        }
+    }
+    root.close();
 }

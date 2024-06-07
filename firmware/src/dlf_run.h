@@ -28,12 +28,17 @@ class Run {
     streams_t _streams;
     vector<unique_ptr<LogFile>> _log_files;
 
+    String _lockfile_path;
+
+
    public:
     Run(FS &fs, streams_t all_streams, chrono::microseconds tick_interval, Encodable &meta);
     
+    void create_lockfile();
+
     void create_metafile(Encodable &meta);
 
-    void create_logfile_for(dlf_stream_type_e t);
+    void create_logfile(dlf_stream_type_e t);
 
     /**
      * NOTE: Has caused canary issues if stack too small (1024 is problematic).

@@ -6,6 +6,7 @@ Run::Run(FS &fs, streams_t all_streams, chrono::microseconds tick_interval, Enco
     assert(tick_interval.count() > 0);
 
     _uuid = "/" + StringUUIDGen();
+    _lockfile_path = _uuid + "/" + LOCKFILE_NAME;
     _sync = xSemaphoreCreateCounting(1, 0);
 
 #ifdef DEBUG
@@ -15,12 +16,14 @@ Run::Run(FS &fs, streams_t all_streams, chrono::microseconds tick_interval, Enco
     // Make directory to contain run files.
     _fs.mkdir(_uuid);
 
+    create_lockfile();
+    
     // Writes metafile for this log.
     create_metafile(meta);
 
     // Create logfile instances
-    create_logfile_for(POLLED);
-    create_logfile_for(EVENT);
+    create_logfile(POLLED);
+    create_logfile(EVENT);
 
     Serial.println("Logfiles inited");
 
@@ -57,7 +60,7 @@ void Run::create_metafile(Encodable &meta) {
     f.close();
 }
 
-void Run::create_logfile_for(dlf_stream_type_e t) {
+void Run::create_logfile(dlf_stream_type_e t) {
 #ifdef DEBUG
     DEBUG.printf("Creating %s logfile\n", stream_type_to_string(t));
 #endif
@@ -111,11 +114,20 @@ void Run::close() {
         lf->close();
     }
 
+    // delete lockfile
+    _fs.remove(_lockfile_path);
+
     Serial.println("Run closed cleanly!");
 }
 
 const char *Run::uuid() {
     return _uuid.c_str();
+}
+
+void Run::create_lockfile() {
+    File f = _fs.open(_lockfile_path, "w", true);
+    f.write(0);
+    f.close();
 }
 
 }  // namespace dlf

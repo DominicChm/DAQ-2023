@@ -166,13 +166,13 @@ void offload_init() {
     setup_logger();
 
     FastLED.showColor(CRGB::HotPink);  // overriden wake (battery + reset)
-    delay(1000);
+
+    FastLED.showColor(CRGB::Blue);  // standard wake
+
     // TODO: setup logger w/ offload capabilities.
 }
 
 void standard_init() {
-    FastLED.showColor(CRGB::Blue);  // standard wake
-
     init();
 
     xTaskCreate(task_gps, "gps", 4096, NULL, 5, NULL);
@@ -183,7 +183,7 @@ void standard_init() {
     setup_logger();
 
     double m = 0;
-    r = logger.start_run(Encodable(m, "double"), std::chrono::seconds(1));
+    r = logger.start_run(Encodable(m, "double"));  //, std::chrono::seconds(1)
 
     FastLED.showColor(CRGB::Green);
 }
@@ -206,7 +206,6 @@ void setup() {
     Serial.println("Starting in 2s...");
     delay(2000);
 
-
     // check startup mode. If not woken b/c of USB connection,
     // go into sleep overriden mode.
     pinMode(PIN_VUSB_SENSE, INPUT_PULLDOWN);
@@ -220,6 +219,6 @@ void setup() {
 
 void loop()  // Writes GPS data to the Serial port with a baud rate of 115200
 {
-    // Serial.println(analogRead(PIN_STRING_POT));
-    delay(1000);
+    string_pot = analogRead(PIN_STRING_POT);
+    delay(100);
 }

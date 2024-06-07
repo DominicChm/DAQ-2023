@@ -97,6 +97,8 @@ class CSCLogger : public BaseComponent {
     CSCLogger &syncTo(String server_ip, uint16_t port);
 
     CSCLogger &wifi(String ssid, String password);
+
+    void prune();
 };
 
 #undef POLL

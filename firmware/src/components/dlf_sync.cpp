@@ -7,7 +7,7 @@
 #include "dlf_cfg.h"
 #include "dlf_wifi.h"
 
-CSCDBSynchronizer::CSCDBSynchronizer(FS &fs, String fs_dir) : _fs(fs), dir(fs_dir) {
+CSCDBSynchronizer::CSCDBSynchronizer(FS &fs, String fs_dir, size_t max_retries) : _fs(fs), dir(fs_dir), max_retries(max_retries) {
 }
 
 void CSCDBSynchronizer::syncTo(String server_ip, uint16_t port) {

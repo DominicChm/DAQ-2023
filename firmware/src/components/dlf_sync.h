@@ -10,11 +10,12 @@ class CSCDBSynchronizer : public BaseComponent {
     FS &_fs;
     String dir;
     uint16_t port;
+    size_t max_retries;
 
     EventGroupHandle_t state;
 
    public:
-    CSCDBSynchronizer(FS &fs, String fs_dir = "/");
+    CSCDBSynchronizer(FS &fs, String fs_dir = "/", size_t max_retries = 10);
 
     void syncTo(String server_ip, uint16_t port);
 
