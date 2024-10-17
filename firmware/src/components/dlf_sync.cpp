@@ -7,7 +7,7 @@
 #include "dlf_cfg.h"
 #include "dlf_wifi.h"
 
-CSCDBSynchronizer::CSCDBSynchronizer(FS &fs, String fs_dir, size_t max_retries) : _fs(fs), dir(fs_dir), max_retries(max_retries) {
+CSCDBSynchronizer::CSCDBSynchronizer(FS &fs, String fs_dir, size_t max_retries, size_t upload_size) : _fs(fs), dir(fs_dir), max_retries(max_retries), upload_chunk_size(upload_size) {
 }
 
 void CSCDBSynchronizer::syncTo(String server_ip, uint16_t port) {
@@ -78,8 +78,7 @@ bool CSCDBSynchronizer::upload_run(File run_dir, String path) {
         path.c_str(), server_ip, msg_length);
 
     // Send files
-    const size_t chunk_size = 128;
-    uint8_t buf[chunk_size];
+    uint8_t buf[upload_chunk_size];
 
     for (File f; f = run_dir.openNextFile();) {
         // Send boundary
@@ -87,8 +86,9 @@ bool CSCDBSynchronizer::upload_run(File run_dir, String path) {
 
         // Send file data
         while (f.available()) {
-            size_t num_read = f.read(buf, chunk_size);
-            client.write(buf, num_read);
+            size_t num_read, num_written;
+            num_read = f.read(buf, upload_chunk_size);
+            num_written = client.write(buf, num_read);
         }
         f.close();
     }
@@ -147,9 +147,12 @@ void CSCDBSynchronizer::task_sync(void *arg) {
 
         Serial.println("wlan ready - Beginning sync");
 
+        // Start offload
+        a->is_offloading = true;
+
         File run_dir;
         int num_failures = 0;
-        while (xEventGroupGetBits(c->ev) & CSCWifiClient::WLAN_READY && (run_dir = root.openNextFile()) && num_failures < 3) {
+        while (xEventGroupGetBits(c->ev) & CSCWifiClient::WLAN_READY && (run_dir = root.openNextFile()) && num_failures < a->max_retries) {
             // Skip sys vol information file
             if (!strcmp(run_dir.name(), "System Volume Information"))
                 continue;
@@ -167,6 +170,9 @@ void CSCDBSynchronizer::task_sync(void *arg) {
             String path = String("/upload/") + run_dir.name();
             num_failures += !a->upload_run(run_dir, path);
         }
+
+        a->is_offloading = false;
+
         root.close();
         Serial.printf("Done syncing (failures: %d)\n", num_failures);
 

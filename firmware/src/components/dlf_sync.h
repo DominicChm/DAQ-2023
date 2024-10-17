@@ -11,11 +11,14 @@ class CSCDBSynchronizer : public BaseComponent {
     String dir;
     uint16_t port;
     size_t max_retries;
+    size_t upload_chunk_size;
 
     EventGroupHandle_t state;
 
    public:
-    CSCDBSynchronizer(FS &fs, String fs_dir = "/", size_t max_retries = 10);
+    bool is_offloading;
+
+    CSCDBSynchronizer(FS &fs, String fs_dir = "/", size_t max_retries = 10, size_t upload_size = 1024);
 
     void syncTo(String server_ip, uint16_t port);
 
@@ -25,5 +28,4 @@ class CSCDBSynchronizer : public BaseComponent {
     bool upload_run(File run_dir, String path);
 
     static void task_sync(void *arg);
-
 };

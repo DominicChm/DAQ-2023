@@ -138,3 +138,11 @@ void CSCLogger::prune() {
     }
     root.close();
 }
+
+bool CSCLogger::is_offloading() {
+    auto wfc = get_component<CSCDBSynchronizer>();
+
+    if (!wfc) return false;
+
+    return wfc->is_offloading;
+}

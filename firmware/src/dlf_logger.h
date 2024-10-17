@@ -50,6 +50,8 @@ class CSCLogger : public BaseComponent {
     std::vector<BaseComponent *> components;
 
    public:
+    bool is_offloading();
+
     enum LoggerEvents : uint32_t {
         NEW_RUN = 1
     };
