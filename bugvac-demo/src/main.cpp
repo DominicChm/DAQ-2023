@@ -17,6 +17,7 @@ To sleep the ESP at any time, press the BOOT button.
 
 #define PIN_VUSB_SENSE GPIO_NUM_27
 #define PIN_GOTO_SLEEP GPIO_NUM_0
+#define PIN_QWIIC_POWER GPIO_NUM_12
 #define PIN_STRING_POT GPIO_NUM_34
 
 CRGB leds[1];
@@ -94,7 +95,11 @@ void wait_valid_time() {
 
 // Reads GPS data and updates local state.
 void task_gps(void* args) {
+    pinMode(PIN_QWIIC_POWER, OUTPUT);
+    digitalWrite(PIN_QWIIC_POWER, HIGH);  // turn on gps rail
+
     Serial1.begin(9600, SERIAL_8N1, 22, 21);
+
     while (true) {
         // Read GPS
         while (Serial1.available())
@@ -138,9 +143,12 @@ void task_shutdown_monitor(void* args) {
 
     SD.end();
 
-    // turn off GPS by turning off qwiic power
-    pinMode(0, OUTPUT);
-    digitalWrite(0, LOW);
+    // put GPS to sleep
+    // pinMode(0, OUTPUT);
+    // digitalWrite(0, LOW);
+
+    // shutdown gps
+    digitalWrite(PIN_QWIIC_POWER, LOW);  // turn on gps rail
 
     // Turn off LED
     FastLED.showColor(CRGB::Black);
@@ -156,20 +164,34 @@ void task_shutdown_monitor(void* args) {
     return;
 }
 
+void task_led(void* arg) {
+    while (true) {
+        if (logger.is_offloading()) {
+            FastLED.showColor(CRGB::Black);
+            delay(250);
+            FastLED.showColor(CRGB::Blue);
+        } else {
+            FastLED.showColor(CRGB::Blue);
+        }
+        delay(250);
+    }
+}
+
+
 void offload_init() {
-    FastLED.showColor(CRGB::YellowGreen);  // overriden wake (battery + reset)
     offload_mode = true;
 
     init();
-
     wait_sd();
+
+    logger
+        .wifi("CalStrawberry", "Fresa1301")
+        .syncTo("812.us.to", 9235);
+
     setup_logger();
+    xTaskCreate(task_led, "led", 4096, NULL, 5, NULL);
 
-    FastLED.showColor(CRGB::HotPink);  // overriden wake (battery + reset)
-
-    FastLED.showColor(CRGB::Blue);  // standard wake
-
-    // TODO: setup logger w/ offload capabilities.
+    FastLED.showColor(CRGB::Blue);  // overriden wake (battery + reset)
 }
 
 void standard_init() {
@@ -188,17 +210,14 @@ void standard_init() {
     FastLED.showColor(CRGB::Green);
 }
 
-void init() {
-    logger
-        .wifi("test_net", "12345678")
-        .syncTo("812.us.to", 9235);
 
+void init() {
     xTaskCreate(task_shutdown_monitor, "shutdown_mon", 4096, NULL, 5, NULL);
 }
 
 void setup() {
     FastLED.addLeds<WS2812, 2, GRB>(leds, 1);
-    FastLED.setBrightness(10);
+    FastLED.setBrightness(255);
 
     Serial.begin(115200);
     FastLED.showColor(CRGB::White);  // standard wake

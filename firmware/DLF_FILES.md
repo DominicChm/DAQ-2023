@@ -64,3 +64,17 @@ A `LogFile` instance is responsible for writing `Stream` data to disk. One `LogF
 
 ## `Stream Handles`
 Provide an interface to underlying data. They provide metering.
+
+
+
+
+7AF3887778205E8C3E032BD2062136E7
+  - polled.bin
+    - Header
+    - Data
+  - events.bin
+    - Header
+    - Data
+  - meta.bin
+    - Header
+    - Data
